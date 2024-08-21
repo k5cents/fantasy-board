@@ -1,13 +1,8 @@
-Forked from [metro-sign](https://github.com/metro-sign/dc-metro) to allow multiple stations and implement a "walking distance" modifier to ignore trains you cannot get to in time. Uses CircuitPython 8 and corresponding libraries.
+> [!NOTE]  
+> Forked from [metro-sign](https://github.com/erikrrodriguez/dc-metro), which was forked from [metro-sign](https://github.com/metro-sign/dc-metro). In the process of making the sign display ESPN fantasy football data instead of WMATA data.
 
-Includes fixes and features from:
-- Scott Garcia (scottiegarcia) (help with Metrohero API (RIP), tidying, and implementing shut off hours for the board) 
-- ScottKekoaShay (Auto swapping between train platforms, if desired)
-
-Original documentation below, I'm too lazy to add a new .gif:
-
-# Washington DC Metro Train Sign
-This project contains the source code to create your own Washington DC Metro sign. It was written using CircuitPython targeting the [Adafruit Matrix Portal](https://www.adafruit.com/product/4745) and is optimized for 64x32 RGB LED matrices.
+# Fantasy Football Scoreboard
+This project contains the source code to create your own ESPN fantasy football scoreboard. It was written using CircuitPython targeting the [Adafruit Matrix Portal](https://www.adafruit.com/product/4745) and is optimized for 64x32 RGB LED matrices.
 
 ![Board Showing Train Arriving](img/board.gif)
 
@@ -78,19 +73,7 @@ This project contains the source code to create your own Washington DC Metro sig
 
     ![Loading Sign](img/loading.jpg)
 
-## Part 3: Getting a WMATA / Metro Hero API Key
-Two API's are available with public metro data. The Official WMATA API and the MetroHero API. Either will work, but I opt for the latter because I think it's train times are more accurate and because it gives estimates for trains >30 minutes away. Either will work correctly, at least until Metrohero sunsets in July 2023, RIP.
-
-### Part 3.a: Getting a WMATA API Key
-1. Create a WMATA developer account on [WMATA's Developer Website](https://developer.wmata.com/signup/).
-2. After your account is created, add the _Default Tier_ subscription to your account on [this page](https://developer.wmata.com/products/5475f1b0031f590f380924fe).
-3. After doing this, you will be redirected to [your profile](https://developer.wmata.com/developer).
-4. Under the _Subscriptions_ section on your profile, select the **show** button beside the _Primary Key_. This is the key that allows the board to communicate with WMATA.
-
-### Part 3.b: Getting a Metro Hero Key
-1. Send an polite email to contact@dcmetrohero.com asking for an API Key. [MetroHero's Developer Website](https://www.dcmetrohero.com/apis).
-2. Wait patiently for their reply with your API key.
-
+## Part 3: No need for an ESPN API key
 
 ## Part 4: (Optional) Obtain adafruit IO Key for Off Hours.
 If you'd like to configure your board to turn the display off for certain hours of the day, you'll need to set up a free account with Adafruit to make requests for the local time. You may skip this if you are not interested in this feature.
@@ -101,20 +84,13 @@ If you'd like to configure your board to turn the display off for certain hours 
 ## Part 5: Configuring the Board
 1. Open the [config.py](src/config.py) file located in the root of the _CIRCUITPY_ volume.
 2. Fill in your WiFi SSID and password under the **Network Configuration** section.
-3. Under the **Metro Configuration** section:
-    1. If using MetroHero, update the _source_api_ field to `MetroHero`.
-    2. Set either the _wmata_api_key_ or _metro_hero_api_key to the API key you got from [Part 3](#part-3-getting-a-wmata-/-metro-hero-api-key).
-    3. Select your stations and lines from the [Metro Station Codes table](#dc-metro-station-codes), and set the _metro_station_codes_ value to the corresponding value in the table.
-    4. For _train_groups_1_, the values need to be either **'1'** or **'2'** or  **'3'**. This determines which platform's arrival times will be displayed. These typically fall in line with the values provided in the [Train Group table](#train-group-explanations), although single tracking and other events can cause these to change. The ordering must match the ordering used in _metro_station_codes_.
-        1. If you would like for the board to swap which train groups are displayed on each refresh, set the _swap_train_groups_ varaible to True, and define your second set of train groups in _train_groups_2_ 
-    6. Set the _walking_times_ values to the time it takes you to get to these stations. This will make your sign ignore trains arriving in less than this much time.
+3. Under the **League Configuration** section:
+    1. Set `leagueId` and `teamId` to your league and team.
 4. (Optional) Under the **Off Hours Configuration** section:
     1. Set _aio_username_ to the username you created with Adafruit in [Part 4]((optional)-obtain-adafruit-io-key-for-off-hours).
     2. Set _aio_key_ to the api key associated with your Adafruit account.
     3. Set the _display_on_time_ and _display_off_time_ variables to the time of day you would like the sign to be turned off and on. Note that they must be of the format "HH:MM" and use a 24 hour clock.
 4. At the end, the first part of your configuration file should look similar this:
-
-
 
 ```python
 #########################
@@ -122,32 +98,16 @@ If you'd like to configure your board to turn the display off for certain hours 
 #########################
 
 # WIFI Network SSID
-'wifi_ssid': 'Grindr Pickup Zone',
+'wifi_ssid': 'My Wireless Network',
 
 # WIFI Password
-'wifi_password': 'MyMetroBoardBringsTheBoisToTheNavyYard',
+'wifi_password': 'MyWirelessPassword',
 
 #########################
-# Metro Configuration   #
+# leagueId Configuration   #
 #########################
-'source_api': 'WMATA', # WMATA or MetroHero.
-
-# WMATA / MetroHero API Key
-'wmata_api_key': 'd3adb33fd3adb33fd3adb33f',
-'metro_hero_api_key': '',
-
-# Metro Station Code
-'metro_station_codes': ['E03','C02'],
-
-# Metro Train Group
-'train_groups': ['2','2'],
-
-#Walking Distance Times, ignore trains arriving in less than this time
-# [2, 12]
-'walking_times': [8, 8],
-
-# API Key for WMATA
-'metro_api_key': 'd3adb33fd3adb33fd3adb33f',
+'leagueId': '42654852'
+'teamId': '6'
 
 ...
 ...
@@ -168,131 +128,7 @@ If you'd like to configure your board to turn the display off for certain hours 
 'display_off_time': "22:00",
 ```
 
+5. After you save this file, your board should refresh and connect to ESPN.
 
-5. After you save this file, your board should refresh and connect to WMATA.
-
-## Troubleshooting
-If something goes wrong, take a peek at the [Adafruit Documentation](https://learn.adafruit.com/adafruit-matrixportal-m4). Additionally, you can connect to the board using a [serial connection](https://learn.adafruit.com/welcome-to-circuitpython/kattni-connecting-to-the-serial-console) to gain access to its logging.
-
-# Appendix
-## DC Metro Station Codes
-| Name                                             | Lines      | Code |
-|--------------------------------------------------|------------|------|
-| Addison Road-Seat Pleasant                       | BL, SV     | G03  |
-| Anacostia                                        | GR         | F06  |
-| Archives-Navy Memorial-Penn Quarter              | GR, YL     | F02  |
-| Arlington Cemetery                               | BL         | C06  |
-| Ballston-MU                                      | OR, SV     | K04  |
-| Benning Road                                     | BL, SV     | G01  |
-| Bethesda                                         | RD         | A09  |
-| Braddock Road                                    | BL, YL     | C12  |
-| Branch Ave                                       | GR         | F11  |
-| Brookland-CUA                                    | RD         | B05  |
-| Capitol Heights                                  | BL, SV     | G02  |
-| Capitol South                                    | BL, OR, SV | D05  |
-| Cheverly                                         | OR         | D11  |
-| Clarendon                                        | OR, SV     | K02  |
-| Cleveland Park                                   | RD         | A05  |
-| College Park-U of Md                             | GR         | E09  |
-| Columbia Heights                                 | GR, YL     | E04  |
-| Congress Heights                                 | GR         | F07  |
-| Court House                                      | OR, SV     | K01  |
-| Crystal City                                     | BL, YL     | C09  |
-| Deanwood                                         | OR         | D10  |
-| Dunn Loring-Merrifield                           | OR         | K07  |
-| Dupont Circle                                    | RD         | A03  |
-| East Falls Church                                | OR, SV     | K05  |
-| Eastern Market                                   | BL, OR, SV | D06  |
-| Eisenhower Avenue                                | YL         | C14  |
-| Farragut North                                   | RD         | A02  |
-| Farragut West                                    | BL, OR, SV | C03  |
-| Federal Center SW                                | BL, OR, SV | D04  |
-| Federal Triangle                                 | BL, OR, SV | D01  |
-| Foggy Bottom-GWU                                 | BL, OR, SV | C04  |
-| Forest Glen                                      | RD         | B09  |
-| Fort Totten                                      | RD         | B06  |
-| Fort Totten                                      | GR, YL     | E06  |
-| Franconia-Springfield                            | BL         | J03  |
-| Friendship Heights                               | RD         | A08  |
-| Gallery Pl-Chinatown                             | RD         | B01  |
-| Gallery Pl-Chinatown                             | GR, YL     | F01  |
-| Georgia Ave-Petworth                             | GR, YL     | E05  |
-| Glenmont                                         | RD         | B11  |
-| Greenbelt                                        | GR         | E10  |
-| Greensboro                                       | SV         | N03  |
-| Grosvenor-Strathmore                             | RD         | A11  |
-| Huntington                                       | YL         | C15  |
-| Judiciary Square                                 | RD         | B02  |
-| King St-Old Town                                 | BL, YL     | C13  |
-| L'Enfant Plaza                                   | BL, OR, SV | D03  |
-| L'Enfant Plaza                                   | GR, YL     | F03  |
-| Landover                                         | OR         | D12  |
-| Largo Town Center                                | BL, SV     | G05  |
-| McLean                                           | SV         | N01  |
-| McPherson Square                                 | BL, OR, SV | C02  |
-| Medical Center                                   | RD         | A10  |
-| Metro Center                                     | RD         | A01  |
-| Metro Center                                     | BL, OR, SV | C01  |
-| Minnesota Ave                                    | OR         | D09  |
-| Morgan Boulevard                                 | BL, SV     | G04  |
-| Mt Vernon Sq 7th St-Convention Center            | GR, YL     | E01  |
-| Navy Yard-Ballpark                               | GR         | F05  |
-| Naylor Road                                      | GR         | F09  |
-| New Carrollton                                   | OR         | D13  |
-| NoMa-Gallaudet U                                 | RD         | B35  |
-| Pentagon                                         | BL, YL     | C07  |
-| Pentagon City                                    | BL, YL     | C08  |
-| Potomac Ave                                      | BL, OR, SV | D07  |
-| Prince George's Plaza                            | GR         | E08  |
-| Rhode Island Ave-Brentwood                       | RD         | B04  |
-| Rockville                                        | RD         | A14  |
-| Ronald Reagan Washington National Airport        | BL, YL     | C10  |
-| Rosslyn                                          | BL, OR, SV | C05  |
-| Shady Grove                                      | RD         | A15  |
-| Shaw-Howard U                                    | GR, YL     | E02  |
-| Silver Spring                                    | RD         | B08  |
-| Smithsonian                                      | BL, OR, SV | D02  |
-| Southern Avenue                                  | GR         | F08  |
-| Spring Hill                                      | SV         | N04  |
-| Stadium-Armory                                   | BL, OR, SV | D08  |
-| Suitland                                         | GR         | F10  |
-| Takoma                                           | RD         | B07  |
-| Tenleytown-AU                                    | RD         | A07  |
-| Twinbrook                                        | RD         | A13  |
-| Tysons Corner                                    | SV         | N02  |
-| U Street/African-Amer Civil War Memorial/Cardozo | GR, YL     | E03  |
-| Union Station                                    | RD         | B03  |
-| Van Dorn Street                                  | BL         | J02  |
-| Van Ness-UDC                                     | RD         | A06  |
-| Vienna/Fairfax-GMU                               | OR         | K08  |
-| Virginia Square-GMU                              | OR, SV     | K03  |
-| Waterfront                                       | GR         | F04  |
-| West Falls Church-VT/UVA                         | OR         | K06  |
-| West Hyattsville                                 | GR         | E07  |
-| Wheaton                                          | RD         | B10  |
-| White Flint                                      | RD         | A12  |
-| Wiehle-Reston East                               | SV         | N06  |
-| Woodley Park-Zoo/Adams Morgan                    | RD         | A04  |
-
-## DC Metro Silver Line Phase II Stations
-A special thanks to [u/SandBoxJohn](https://www.reddit.com/user/SandBoxJohn) for these.
-| Name                                             | Lines      | Code |
-|--------------------------------------------------|------------|------|
-| Reston Town Center                               | SV         | N07  |
-| Herndon                                          | SV         | N08  |
-| Innovation Center                                | SV         | N09  |
-| Dulles Airport                                   | SV         | N10  |
-| Loudoun Gateway                                  | SV         | N11  |
-| Ashburn                                          | SV         | N12  |
-
-## Train Group Explanations
-A special thanks to [u/SandBoxJohn](https://www.reddit.com/user/SandBoxJohn) for these.
-| Line       | Train Group | Destination                                            |
-|------------|-------------|--------------------------------------------------------|
-| RD         | "1"         | Glenmont                                               |
-| RD         | "2"         | Shady Grove                                            |
-| BL, OR, SV | "1"         | New Carrollton, Largo Town Center                      |
-| BL, OR, SV | "2"         | Vienna, Franconia-Springfield, Wiehle-Reston East      |
-| GR, YL     | "1"         | Greenbelt                                              |
-| GR, YL     | "2"         | Huntington, Branch Avenue                              |
-| N/A        | "3"         | Center Platform at National Airport, West Falls Church |
+> [!TIP]
+> If something goes wrong, take a peek at the [Adafruit Documentation](https://learn.adafruit.com/adafruit-matrixportal-m4). Additionally, you can connect to the board using a [serial connection](https://learn.adafruit.com/welcome-to-circuitpython/kattni-connecting-to-the-serial-console) to gain access to its logging.
