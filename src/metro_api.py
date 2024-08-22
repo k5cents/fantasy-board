@@ -11,10 +11,10 @@ class MetroApi:
     def __init__(self):
         pass
 
-    def fetch_train_predictions(self, wifi, station_codes, groups, walks={}) -> [dict]:
-        return self._fetch_train_predictions(wifi, station_codes, groups, walks, retry_attempt=0)
+    def fetch_live_score(self, wifi, station_codes, groups, walks={}) -> [dict]:
+        return self._fetch_live_score(wifi, station_codes, groups, walks, retry_attempt=0)
 
-    def _fetch_train_predictions(self, wifi, station_codes, groups, walks, retry_attempt: int) -> [dict]:
+    def _fetch_live_score(self, wifi, station_codes, groups, walks, retry_attempt: int) -> [dict]:
         try:
             print('Fetching...')
             start = time.time()
@@ -24,15 +24,6 @@ class MetroApi:
                 api_url = config['wmata_api_url'] + ','.join(set(station_codes))
                 response = wifi.get(api_url, headers={'api_key': config['wmata_api_key']}, timeout=30).json()
                 trains = list(filter(lambda t: (t['LocationCode'], t['Group']) in groups, response['Trains']))
-            else:
-                #Metro Hero Method
-                trains = []
-                for station in set(station_codes): # select trains in desired direction
-                    api_url = config['metro_hero_api_url'].replace('[stationCode]', station)
-                    response = wifi.get(api_url, headers={'apiKey': config['metro_hero_api_key']}, timeout=30)
-                    res = response.json()[:5]
-                    response.close()
-                    trains.extend(list(filter(lambda t: (station, t['Group']) in groups, res)))
             print('Received response from ' + config['source_api'] + ' api...')
             TIME_BUFFER = round((time.time() - start)/60) + 1
             trains = [self._normalize_train_response(t, TIME_BUFFER) for t in trains]
@@ -52,7 +43,7 @@ class MetroApi:
             if retry_attempt < config['metro_api_retries']:
                 print('Failed to connect to API. Reattempting...')
                 # Recursion for retry logic because I don't care about your stack
-                return self._fetch_train_predictions(wifi, station_codes, groups, walks, retry_attempt + 1)
+                return self._fetch_live_score(wifi, station_codes, groups, walks, retry_attempt + 1)
             else:
                 raise MetroApiOnFireException()
 
