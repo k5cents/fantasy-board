@@ -1,7 +1,7 @@
 import time
 from config import config
 from train_board import TrainBoard
-from metro_api import MetroApi, MetroApiOnFireException
+from espn_api import MetroApi, MetroApiOnFireException
 
 from secrets import secrets
 import busio
@@ -55,8 +55,8 @@ api = MetroApi()
 def refresh_trains(train_groups: list) -> [dict]:
     try:
         trains = api.fetch_train_predictions(wifi, STATION_CODES, train_groups, WALKING_TIMES)
-    except MetroApiOnFireException:
-        print(config['source_api'] + ' API might be on fire. Resetting wifi ...')
+    except FantasyApiOnFireException:
+        print(config['ESPN API might be on fire. Resetting wifi ...')
         wifi.reset()
         return None
     return trains

@@ -14,13 +14,12 @@ config = {
 	##########################
 	# League Configuration   #
 	##########################
-	'source_api': 'ESPN',
-  
+
 	'league_id': 42654852,
 	'season_id': 2024,
 	'team_id': 4,
   'slot_id_bench': 20,
-
+  
 	'refresh_interval': 60,
 
 	#############################
@@ -56,9 +55,10 @@ config = {
 	'heading_color': 0xFF0000,
 
 	'train_line_height': 6,
-	'train_line_width': 4,
-
-	'min_label_characters': 3,
-	'destination_max_characters': 8,
+	'train_line_width': 4
 
 }
+
+config.update(
+  {"espn_api_url": f"https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{config['season_id']}/segments/0/leagues/{config['league_id']}?view=mScoreboard&view=mRoster"}
+)

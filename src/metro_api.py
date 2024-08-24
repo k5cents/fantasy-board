@@ -4,10 +4,10 @@ import time
 from config import config
 from secrets import secrets
 
-class MetroApiOnFireException(Exception):
+class FantasyApiOnFireException(Exception):
     pass
 
-class MetroApi:
+class FantasyApi:
     def __init__(self):
         pass
 
@@ -45,7 +45,7 @@ class MetroApi:
                 # Recursion for retry logic because I don't care about your stack
                 return self._fetch_live_score(wifi, station_codes, groups, walks, retry_attempt + 1)
             else:
-                raise MetroApiOnFireException()
+                raise FantasyApiOnFireException()
 
     def arrival_map(self, arr):
         if arr == 'BRD':
