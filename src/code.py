@@ -30,15 +30,9 @@ TIME_URL += "&fmt=%25Y-%25m-%25d+%25H%3A%25M%3A%25S.%25L+%25j+%25u+%25z+%25Z"
 OFF_HOURS_ENABLED = aio_username and aio_key and config.get("display_on_time") and config.get("display_off_time")
 
 REFRESH_INTERVAL = config['refresh_interval']
-STATION_CODES = config['metro_station_codes']
-TRAIN_GROUPS_1 = list(zip(STATION_CODES, config['train_groups_1']))
-TRAIN_GROUPS_2 = list(zip(STATION_CODES, config['train_groups_2'])) if config['swap_train_groups'] else TRAIN_GROUPS_1
-train_groups = TRAIN_GROUPS_1
-WALKING_TIMES = config['walking_times']
-if max(WALKING_TIMES) == 0:
-    WALKING_TIMES = {}
-else:
-    WALKING_TIMES = dict(zip(STATION_CODES, WALKING_TIMES))
+SEASON_ID = config['season_id']
+LEAUGE_ID = config['league_id']
+TEAM_ID = config['slot_id_bench']
 
 def is_off_hours() -> bool:
     try:

@@ -1,17 +1,12 @@
 import urllib.request
 import json
-
-# Configurable constants
-LEAGUE_ID = 42654852
-SEASON_ID = 2024
-TEAM_ID = 4
-SLOT_ID_BENCH = 20  # Bench players have a slotId of 20
+from config import config
 
 # Function to fetch data from ESPN API
-def fetch_data(league_id, season_id):
+def fetch_data(sid, lid):
     espn_api_url = (
         f"https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/"
-        f"{season_id}/segments/0/leagues/{league_id}?view=mScoreboard&view=mRoster"
+        f"{sid}/segments/0/leagues/{lid}?view=mScoreboard&view=mRoster"
     )
     with urllib.request.urlopen(espn_api_url) as url:
         return json.loads(url.read().decode())
@@ -61,7 +56,7 @@ def count_locked_players(rosters):
     unlocked_counts = {}
 
     for player in rosters:
-        if player['slotId'] == SLOT_ID_BENCH:
+        if player['slotId'] == config['slot_id_bench']:
             continue  # Skip bench players
         team_id = player['teamId']
         if team_id not in locked_counts:
@@ -76,7 +71,7 @@ def count_locked_players(rosters):
 
 # Main function to orchestrate the data fetching and processing
 def main():
-    data = fetch_data(LEAGUE_ID, SEASON_ID)
+    data = fetch_data(config['season_id'], config['league_id'])
     scores, rosters = extract_scores_and_rosters(data)
     enrich_scores(scores, data)
 
@@ -88,7 +83,7 @@ def main():
         team['unlocked'] = unlocked_counts.get(team['teamId'], 0)
 
     # Filter for the selected matchup (where TEAM_ID is present)
-    selected_scores = [team for team in scores if team['matchupId'] == next(t['matchupId'] for t in scores if t['teamId'] == TEAM_ID)]
+    selected_scores = [team for team in scores if team['matchupId'] == next(t['matchupId'] for t in scores if t['teamId'] == config['team_id'])]
 
     # Ensure there are exactly two teams in the matchup
     if len(selected_scores) == 2:
@@ -96,10 +91,10 @@ def main():
 
         # Format the scoreboard with teams as columns
         scoreboard = f"""
-{team1['abbrev']:<8} {team2['abbrev']:>8}
-{team1['totalPointsLive']:<8.1f} {team2['totalPointsLive']:>8.1f}
-{team1['totalProjectedPointsLive']:<8.1f} {team2['totalProjectedPointsLive']:>8.1f}
-{str(team1['locked']) + '/' + str(team1['unlocked']):<8} {str(team2['locked']) + '/' + str(team2['unlocked']):>8}
+{team1['abbrev']:<6.4} {team2['abbrev']:>6.4}
+{team1['totalPointsLive']:<6.1f} {team2['totalPointsLive']:>6.1f}
+{team1['totalProjectedPointsLive']:<6.1f} {team2['totalProjectedPointsLive']:>6.1f}
+{str(team1['locked']) + '/' + str(team1['unlocked']):<6} {str(team2['locked']) + '/' + str(team2['unlocked']):>6}
 """
         # Display the scoreboard
         print(scoreboard.strip()) 

@@ -1,4 +1,4 @@
-from adafruit_bitmap_font import bitmap_font
+#from adafruit_bitmap_font import bitmap_font
 
 config = {
 	#########################
@@ -16,14 +16,12 @@ config = {
 	##########################
 	'source_api': 'ESPN',
   
-	'league_id': '252353',
-	'season_id': '2024',
-	'team_id': '6',
+	'league_id': 42654852,
+	'season_id': 2024,
+	'team_id': 4,
+  'slot_id_bench': 20,
 
-	# WMATA API
-	'espn_api_url': f'https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season_id}/segments/0/leagues/{league_id}',
-
-	'refresh_interval': 60, # 5 seconds is a good middle ground for updates, as the processor takes its sweet ol time
+	'refresh_interval': 60,
 
 	#############################
 	# Off Hours Configuration   #
@@ -43,7 +41,7 @@ config = {
 	# Display Configuration #
 	#########################
 	'matrix_width': 64,
-	'font': bitmap_font.load_font('lib/5x7.bdf'),
+	# 'font': bitmap_font.load_font('lib/5x7.bdf'),
 
 	'character_width': 5,
 	'character_height': 6,
