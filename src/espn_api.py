@@ -137,9 +137,5 @@ class FantasyApi:
 if __name__ == "__main__":
     api = FantasyApi()
     team1_group, team2_group = api.main()
-    print("Team 1 Data:")
-    for line in team1_group:
-        print(line)
-    print("\nTeam 2 Data:")
-    for line in team2_group:
-        print(line)
+    print(team1_group)
+    print(team2_group)
