@@ -18,7 +18,6 @@ config = {
     # Layout for terminalio 8px font on 64x32 (4 rows)
     'left_col_x': 1,
     'right_col_x': 40,
-    # 'row_baselines': [1, 9, 17, 25],
 
     # Colors & banner
     'text_color': 0xFFFFFF,       # bright rows (team + live)
@@ -28,10 +27,10 @@ config = {
 
     # Font information
     'font_path': '/lib/5x7.bdf',  # same tiny bitmap font as the WMATA repo
-    'top_margin': 0,              # push everything down to avoid top clipping
+    'top_margin': 3,              # push everything down to avoid top clipping
 
     # Row baselines inside the group (we’re adding +3 via top_margin, so keep last row safe)
-    'row_baselines': [5, 13, 21, 28],  # 4 rows, top → bottom
+    'row_baselines': [1, 9, 17, 25],  # 4 rows, top → bottom
 
     'rotation': 180
 }
