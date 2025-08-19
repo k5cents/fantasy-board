@@ -3,4 +3,5 @@
 
 lib
 boot_out.txt
-src/__pycache__/config.cpython-310.pyc
+__pycache__/
+*.pyc

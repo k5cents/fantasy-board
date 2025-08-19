@@ -8,7 +8,5 @@ from config import config
 secrets = {
     'ssid': config['wifi_ssid'],
     'password': config['wifi_password'],
-    'aio_username': config.get('aio_username'),
-    'aio_key': config.get('aio_key'),
     'timezone': 'America/New_York',
 }

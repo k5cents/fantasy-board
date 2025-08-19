@@ -1,0 +1,27 @@
+{
+  "status": ["ok"],
+  "league": [252353],
+  "season": [2024],
+  "sleep": false,
+  "timestamp": ["2025-08-18 23:45:58"],
+  "scoreboard": [
+    {
+      "team_id": 4,
+      "team_abbrev": "ADAM",
+      "live_points": 99.9,
+      "proj_points": 99.9,
+      "score_rank": 10,
+      "n_locked": 9,
+      "n_unlocked": 0
+    },
+    {
+      "team_id": 6,
+      "team_abbrev": "ZANE",
+      "live_points": 66.6,
+      "proj_points": 123.0,
+      "score_rank": 6,
+      "n_locked": 6,
+      "n_unlocked": 3
+    }
+  ]
+}
