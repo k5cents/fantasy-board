@@ -16,7 +16,9 @@ param_league <- 252353
 param_season <- 2024
 param_team <- 6
 
-json_file <- "/home/kiernan/Developer/scoreboard/scoreboard.json"
+os <- Sys.info()["sysname"]
+
+json_file <- "scoreboard.json"
 
 # request -----------------------------------------------------------------
 
@@ -46,6 +48,16 @@ if (is.null(resp) || resp_is_error(resp)) {
   quit(save = "no", status = 0)
 }
 
+# note the time of the HTTP response
+resp_time <- as.POSIXct(
+  x = resp$headers$date,
+  format = "%a, %d %b %Y %H:%M:%S GMT", 
+  tz = "GMT"
+)
+
+resp_time <- format(resp_time, tz = "America/New_York")
+
+# pull the data from the response
 dat <- resp_body_json(resp, simplifyVector = TRUE)
 
 # format ------------------------------------------------------------------
@@ -83,71 +95,60 @@ if (nrow(s) == 0) {
   quit(save = "no", status = 0)
 }
 
+proj_fifth <- sort(s$proj_points[!is.na(s$proj_points)], decreasing = TRUE)[5]
+
 s <- s |>
   # filter rows without projected points
-  filter(!is.na(proj_points)) |>
+  filter(
+    !is.na(proj_points)
+  ) |>
   # add supplemental columns
   mutate(
     # round points
-    live_points = round(live_points, 0),
-    proj_points = round(proj_points, 0),
+    live_points = round(live_points, 1),
+    proj_points = round(proj_points, 1),
     # flag if projected score is in top half
-    bonus_win = proj_points > median(proj_points),
+    bonus_win = as.integer(proj_points >= proj_fifth),
+    bonus_diff = round(proj_points - proj_fifth, 1),
     # rank of projected score out of all scores
     score_rank = min_rank(desc(proj_points)),
     # team abbreviation
     team_abbrev = dat$teams$abbrev[match(team_id, dat$teams$id)]
   ) |>
+  # flag if projected to win match
+  mutate(
+    match_win = as.integer(proj_points == max(proj_points)), 
+    .by = matchup_id
+  ) |>
   # keep only the selected matchup
-  filter(matchup_id == matchup_id[param_team == team_id]) |>
-  # rename and select columns
-  select(team_id, team_abbrev, live_points, proj_points, score_rank)
-
-# add player status -------------------------------------------------------
-
-# find the players starting on each team
-rosters <- dat$teams$roster$entries[dat$teams$id %in% s$team_id]
-out <- rep(list(NA), length(rosters))
-for (i in seq_along(rosters)) {
-  out[[i]] <- tibble(
-    team_id = rosters[[i]]$playerPoolEntry$onTeamId,
-    full_name = rosters[[i]]$playerPoolEntry$player$fullName,
-    proj_team = rosters[[i]]$playerPoolEntry$player$proTeamId,
-    slot_id = rosters[[i]]$lineupSlotId,
-    is_locked = rosters[[i]]$playerPoolEntry$lineupLocked
+  filter(
+    matchup_id == matchup_id[param_team == team_id]
   )
-}
 
-# combine the players into a single list
-out <- do.call("rbind", out)
+# record ------------------------------------------------------------------
 
-# limit data frame to players not on bench (20)
-out <- out[out$slot_id != 20 & out$slot_id != 21, ]
-
-# count the players yet to start on each team
-n_locked <- by(out$is_locked, out$team_id, sum)
-n_unlocked <- by(!out$is_locked, out$team_id, sum)
-
-locked <- tibble(
-  team_id = names(n_locked),
-  n_locked = as.vector(n_locked),
-  n_unlocked = as.vector(n_unlocked)
+wins <- tibble(
+  team_abbrev = dat$teams$abbrev,
+  current_wins = dat$teams$record$overall$wins
 )
 
-s <- merge(s, locked)
+s <- left_join(s, wins, by = "team_abbrev")
+
+# write to json -----------------------------------------------------------
 
 out <- list(
   status = "ok",
   league = param_league,
   season = param_season,
-  timestamp = Sys.time(),
+  week = dat$scoringPeriodId,
+  timestamp = resp_time,
   scoreboard = s
 )
 
-# write to json -----------------------------------------------------------
+toJSON(out, pretty = TRUE)
 
-write_json(
-  x = out,
-  path = json_file,
-  pretty = TRUE
-)
+# write_json(
+#   x = out,
+#   path = json_file,
+#   pretty = TRUE
+# )
