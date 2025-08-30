@@ -209,7 +209,9 @@ def build_scoreboard(dat: Dict[str, Any], param_team: int) -> Optional[List[Dict
             "match_win": r["match_win"],
             "current_wins": r["current_wins"],
         })
-        
+
+    cleaned.sort(key=lambda x: 0 if x["team_id"] == int(param_team) else 1)
+
     return cleaned
 
 # ---------------------- main ----------------------------------------------
