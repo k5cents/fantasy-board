@@ -22,7 +22,7 @@ from urllib3.util.retry import Retry
 # ---------------------- config ---------------------------------------------
 
 PARAM_LEAGUE = 252353
-PARAM_SEASON = 2024
+PARAM_SEASON = 2025
 PARAM_TEAM = 6
 
 JSON_FILE = "scoreboard.json"
