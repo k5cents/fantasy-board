@@ -6,3 +6,4 @@ boot_out.txt
 __pycache__/
 *.pyc
 .Rproj.user
+.venv/
