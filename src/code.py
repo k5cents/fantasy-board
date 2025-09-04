@@ -2,6 +2,11 @@ import time
 from config import config as cfg
 from score_board import FantasyBoard
 from read_json import fetch_scores_from_file
+import supervisor
+try:
+    supervisor.disable_autoreload()
+except AttributeError:
+    supervisor.runtime.autoreload = False
 
 def main():
     board = FantasyBoard(cfg)
