@@ -1,8 +1,9 @@
 import time
+import supervisor
 from config import config as cfg
 from score_board import FantasyBoard
 from read_json import fetch_scores_from_file
-import supervisor
+
 try:
     supervisor.disable_autoreload()
 except AttributeError:
@@ -14,7 +15,7 @@ def main():
 
     cache_pair = None
     path = cfg['local_json_path']
-    interval = cfg['refresh_interval']
+    interval = cfg.get('refresh_interval', 60)
 
     while True:
         try:
