@@ -1,26 +1,35 @@
 {
-  "status": ["ok"],
-  "league": [252353],
-  "season": [2024],
-  "timestamp": ["2025-08-18 22:37:41"],
+  "status": "ok",
+  "league": 252353,
+  "season": 2025,
+  "week": 1,
+  "timestamp": "2025-09-03T21:30:01-04:00",
   "scoreboard": [
-    {
-      "team_id": 4,
-      "team_abbrev": "BILL",
-      "live_points": 131,
-      "proj_points": 131,
-      "score_rank": 10,
-      "n_locked": 9,
-      "n_unlocked": 0
-    },
     {
       "team_id": 6,
       "team_abbrev": "KIER",
-      "live_points": 191,
-      "proj_points": 191,
+      "live_points": 0,
+      "live_diff": 0.0,
+      "proj_points": 97.5,
+      "proj_diff": -4.8,
+      "bonus_win": 0,
+      "bonus_diff": -0.5,
       "score_rank": 6,
-      "n_locked": 9,
-      "n_unlocked": 0
+      "match_win": 0,
+      "current_wins": 0
+    },
+    {
+      "team_id": 3,
+      "team_abbrev": "PEPE",
+      "live_points": 0,
+      "live_diff": 0.0,
+      "proj_points": 102.3,
+      "proj_diff": 4.8,
+      "bonus_win": 1,
+      "bonus_diff": 4.3,
+      "score_rank": 2,
+      "match_win": 1,
+      "current_wins": 0
     }
   ]
 }

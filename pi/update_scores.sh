@@ -1,28 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOCK="/tmp/scoreboard.lock"
-RSCRIPT="/usr/bin/Rscript"
-SCRIPT="/home/kiernan/Developer/scoreboard/query-scores.R"
-LOG="/home/kiernan/Developer/scoreboard/scoreboard.log"
+PI_DIR="/home/kiernan/fantasy-board/pi"
+OUT_JSON="$PI_DIR/scoreboard.json"
+TMP_JSON="$PI_DIR/scoreboard.json.tmp"
 
-dow=$(date +%u)   # 1=Mon ... 7=Sun
-hour=$(date +%H)  # 00..23
-min=$(date +%M)   # 00..59
+CIRCUITPY="/mnt/CIRCUITPY"
+CIRCUITPY_TMP="$CIRCUITPY/scoreboard.json.tmp"
+CIRCUITPY_JSON="$CIRCUITPY/scoreboard.json"
 
-fast=0
-# Sunday 08:00–23:59 ET
-if [[ "$dow" -eq 7 && "$hour" -ge 08 && "$hour" -le 23 ]]; then fast=1; fi
-# Monday Night Football
-if [[ "$dow" -eq 1 && "$hour" -ge 19 && "$hour" -le 23 ]]; then fast=1; fi
-if [[ "$dow" -eq 2 && "$hour" -ge 00 && "$hour" -le 01 ]]; then fast=1; fi
-# Thursday Night Football
-if [[ "$dow" -eq 4 && "$hour" -ge 19 && "$hour" -le 23 ]]; then fast=1; fi
-if [[ "$dow" -eq 5 && "$hour" -ge 00 && "$hour" -le 01 ]]; then fast=1; fi
+VENV="/home/kiernan/fantasy-board/.venv"
+PY="$VENV/bin/python"
 
-# Slow mode = only run every 15 minutes
-if [[ "$fast" -eq 0 ]]; then
-  if (( 10#$min % 15 != 0 )); then exit 0; fi
+cd "$PI_DIR"
+
+# Generate fresh JSON atomically
+"$PY" "$PI_DIR/query_scores.py" > "$TMP_JSON"
+
+# Validate JSON (uses stdlib json.tool via the same interpreter)
+"$PY" -m json.tool "$TMP_JSON" >/dev/null || exit 1
+mv -f "$TMP_JSON" "$OUT_JSON"
+
+# Copy to CIRCUITPY atomically if mounted
+if mountpoint -q "$CIRCUITPY"; then
+  install -m 0644 -T "$OUT_JSON" "$CIRCUITPY_TMP"
+  sync
+  mv -f "$CIRCUITPY_TMP" "$CIRCUITPY_JSON"
+  sync
+else
+  echo "[update-scoreboard] WARN: $CIRCUITPY not mounted; skipped device copy" >&2
 fi
 
-flock -n "$LOCK" -c "$RSCRIPT $SCRIPT >>"$LOG" 2>&1"
+echo "[update-scoreboard] Updated $(date -Is)"
