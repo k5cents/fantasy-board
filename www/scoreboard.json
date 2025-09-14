@@ -1,0 +1,35 @@
+{
+  "status": "ok",
+  "league": 252353,
+  "season": 2025,
+  "week": 2,
+  "timestamp": "2025-09-14T16:49:01-04:00",
+  "scoreboard": [
+    {
+      "team_id": 6,
+      "team_abbrev": "KIER",
+      "live_points": 44.7,
+      "live_diff": -50.2,
+      "proj_points": 81.5,
+      "proj_diff": -19.1,
+      "bonus_win": 0,
+      "bonus_diff": -17.6,
+      "score_rank": 9,
+      "match_win": 0,
+      "current_wins": 1
+    },
+    {
+      "team_id": 12,
+      "team_abbrev": "COMP",
+      "live_points": 94.9,
+      "live_diff": 50.2,
+      "proj_points": 100.6,
+      "proj_diff": 19.1,
+      "bonus_win": 1,
+      "bonus_diff": 1.5,
+      "score_rank": 4,
+      "match_win": 1,
+      "current_wins": 0
+    }
+  ]
+}

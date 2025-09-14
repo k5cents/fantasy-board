@@ -1,34 +1,59 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PI_DIR="/home/kiernan/fantasy-board/pi"
-OUT_JSON="$PI_DIR/scoreboard.json"
-TMP_JSON="$PI_DIR/scoreboard.json.tmp"
+PROJECT_DIR="$HOME/fantasy-board"
+OUTDIR="$PROJECT_DIR/www"
+PY="$PROJECT_DIR/.venv/bin/python3"
 
-CIRCUITPY="/mnt/CIRCUITPY"
-CIRCUITPY_TMP="$CIRCUITPY/scoreboard.json.tmp"
-CIRCUITPY_JSON="$CIRCUITPY/scoreboard.json"
+mkdir -p "$OUTDIR"
 
-VENV="/home/kiernan/fantasy-board/.venv"
-PY="$VENV/bin/python"
+TMP="$OUTDIR/.scoreboard.json.$$"
+OUT="$OUTDIR/scoreboard.json"
+LOG="$PROJECT_DIR/pi/scoreboard.log"
 
-cd "$PI_DIR"
+is_gametime() {
+  # %u: 1=Mon ... 7=Sun ; %H%M: 0000..2359 (24h)
+  local dow timehm
+  dow="$(date +%u)"
+  timehm="$(date +%H%M)"
 
-# Generate fresh JSON atomically
-"$PY" "$PI_DIR/query_scores.py" > "$TMP_JSON"
+  # Thu 19:00–23:59
+  if [[ "$dow" -eq 4 && "$timehm" -ge 1900 ]]; then return 0; fi
+  # Sun 12:00–23:59
+  if [[ "$dow" -eq 7 && "$timehm" -ge 1200 ]]; then return 0; fi
+  # Mon 19:00–23:59
+  if [[ "$dow" -eq 1 && "$timehm" -ge 1900 ]]; then return 0; fi
 
-# Validate JSON (uses stdlib json.tool via the same interpreter)
-"$PY" -m json.tool "$TMP_JSON" >/dev/null || exit 1
-mv -f "$TMP_JSON" "$OUT_JSON"
+  return 1
+}
 
-# Copy to CIRCUITPY atomically if mounted
-if mountpoint -q "$CIRCUITPY"; then
-  install -m 0644 -T "$OUT_JSON" "$CIRCUITPY_TMP"
-  sync
-  mv -f "$CIRCUITPY_TMP" "$CIRCUITPY_JSON"
-  sync
+# How stale is the current OUT file?
+now="$(date +%s)"
+mtime=0
+if [[ -f "$OUT" ]]; then
+  mtime="$(stat -c %Y "$OUT" || echo 0)"
+fi
+age=$(( now - mtime ))
+
+if is_gametime; then
+  threshold=60          # update at most once per minute during games
+  mode="gametime"
 else
-  echo "[update-scoreboard] WARN: $CIRCUITPY not mounted; skipped device copy" >&2
+  threshold=$((30*60))  # update at most once every 30 minutes off-hours
+  mode="offhours"
 fi
 
-echo "[update-scoreboard] Updated $(date -Is)"
+if [[ -f "$OUT" && $age -lt $threshold ]]; then
+  {
+    echo "[$(date -Iseconds)] skip ($mode): age=${age}s < threshold=${threshold}s"
+  } >> "$LOG" 2>&1
+  exit 0
+fi
+
+# Run the query script and write atomically
+{
+  echo "[$(date -Iseconds)] update ($mode) start"
+  "$PY" "$PROJECT_DIR/pi/query_scores.py" > "$TMP"
+  mv -f "$TMP" "$OUT"
+  echo "[$(date -Iseconds)] wrote $OUT (size $(wc -c < "$OUT") bytes)"
+} >> "$LOG" 2>&1

@@ -1,39 +1,103 @@
-# metro_api.py
+# read_json.py
+# Minimal JSON loading + validation for the MatrixPortal scoreboard.
+# Supports reading from local filesystem or over Wi-Fi (HTTP) on CircuitPython.
+
 import json
 
-def fetch_scores_from_file(path="/scoreboard.json"):
-    """
-    Reads /scoreboard.json that looks like:
-    {
-      "status": [...],
-      "league": [...],
-      "season": [...],
-      "timestamp": ["..."],
-      "scoreboard": [ {team...}, {team...} ]
-    }
-    Returns (left_team, right_team).
-    """
+# ---- Validation ----
+_MIN_REQUIRED = ("team_abbrev", "live_points", "proj_points", "score_rank")
+
+def _validate_team(team):
+    for k in _MIN_REQUIRED:
+        if k not in team:
+            raise ValueError(f"Missing '{k}' in team object: {team}")
+
+# ---- Local file path ----
+def fetch_scores_from_file(path="/scoreboard.json", return_meta=False):
     with open(path, "r") as f:
         data = json.load(f)
 
-    # Accept either the new wrapped object or the old top-level list
+    # Normalize "teams" to a list of exactly two dicts
     if isinstance(data, dict):
         teams = data.get("scoreboard", [])
     elif isinstance(data, list):
         teams = data
     else:
-        raise ValueError("Unexpected JSON format")
+        raise ValueError("Unexpected JSON format (dict or list expected)")
 
     if not isinstance(teams, list) or len(teams) != 2:
         raise ValueError("Expected exactly two teams in 'scoreboard'")
 
     left, right = teams[0], teams[1]
+    _validate_team(left)
+    _validate_team(right)
 
-    # Minimal field check
-    required = ("team_abbrev", "live_points", "proj_points", "n_locked", "n_unlocked")
-    for t in (left, right):
-        for k in required:
-            if k not in t:
-                raise ValueError(f"Missing '{k}' in team object: {t}")
+    if return_meta and isinstance(data, dict):
+        meta = {k: data[k] for k in ("status", "league", "season", "week", "timestamp", "sleep") if k in data}
+        return left, right, meta
+
+    return left, right
+
+# ---- HTTP path (CircuitPython) ----
+# Only available on-device where the CircuitPython network stack exists.
+try:
+    import wifi
+    import socketpool
+    import ssl
+    import adafruit_requests as requests
+except Exception:
+    # Allow this module to be imported on CPython (your Pi / desktop) without errors.
+    requests = None
+
+_session = None  # cached adafruit_requests Session
+
+def _get_session():
+    """
+    Lazily create and cache a requests.Session using the CircuitPython network stack.
+    Assumes wifi.radio is already connected (handle connect in code.py).
+    """
+    global _session
+    if _session is None:
+        pool = socketpool.SocketPool(wifi.radio)
+        _session = requests.Session(pool, ssl.create_default_context())
+    return _session
+
+def fetch_scores_from_http(url, return_meta=False, timeout=5):
+    """
+    Fetch scoreboard JSON from an HTTP(S) endpoint (MatrixPortal over Wi-Fi).
+    - url: e.g., "http://k5lab.local:8000/scoreboard.json"
+    - return_meta: include top-level metadata if present
+    - timeout: seconds for the HTTP request
+    """
+    if requests is None:
+        raise RuntimeError("HTTP fetch requires CircuitPython (adafruit_requests)")
+
+    sess = _get_session()
+    resp = sess.get(url, timeout=timeout)
+    try:
+        # adafruit_requests doesn't raise for HTTP errors by default,
+        # but we'll be defensive and accept any 2xx/3xx content that parses.
+        data = resp.json()
+    finally:
+        resp.close()
+
+    # Normalize "teams" to a list of exactly two dicts
+    if isinstance(data, dict):
+        teams = data.get("scoreboard", [])
+    elif isinstance(data, list):
+        teams = data
+    else:
+        raise ValueError("Unexpected JSON format (dict or list expected)")
+
+    if not isinstance(teams, list) or len(teams) != 2:
+        raise ValueError("Expected exactly two teams in 'scoreboard'")
+
+    left, right = teams[0], teams[1]
+    _validate_team(left)
+    _validate_team(right)
+
+    if return_meta and isinstance(data, dict):
+        meta = {k: data[k] for k in ("status", "league", "season", "week", "timestamp", "sleep") if k in data}
+        return left, right, meta
 
     return left, right
