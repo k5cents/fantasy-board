@@ -26,11 +26,6 @@ def _wifi_connect():
     wifi.radio.connect(ssid, password)
     print("Connected, IP address:", wifi.radio.ipv4_address)
 
-try:
-    supervisor.disable_autoreload()
-except AttributeError:
-    supervisor.runtime.autoreload = False
-
 def main():
     mode = cfg.get("mode", "FANTASY_LOCAL")
     path = cfg.get("local_json_path", "/scoreboard.json")
