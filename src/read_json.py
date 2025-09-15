@@ -12,10 +12,30 @@ def _validate_team(team):
         if k not in team:
             raise ValueError(f"Missing '{k}' in team object: {team}")
 
+def _extract_meta(data):
+    if isinstance(data, dict):
+        return {k: data[k] for k in ("status", "league", "season", "week", "timestamp", "sleep") if k in data}
+    return {}
+
+def _handle_sleep_if_present(data, return_meta):
+    """
+    If the payload is a dict with {"status":"sleep"}, return (None, None, meta or None)
+    so callers can blank the display without raising.
+    """
+    if isinstance(data, dict) and str(data.get("status", "")).lower() == "sleep":
+        meta = _extract_meta(data) if return_meta else None
+        return True, (None, None, meta) if return_meta else (None, None)
+    return False, None
+
 # ---- Local file path ----
 def fetch_scores_from_file(path="/scoreboard.json", return_meta=False):
     with open(path, "r") as f:
         data = json.load(f)
+
+    # Quiet-hours / sleep payload
+    is_sleep, ret = _handle_sleep_if_present(data, return_meta)
+    if is_sleep:
+        return ret
 
     # Normalize "teams" to a list of exactly two dicts
     if isinstance(data, dict):
@@ -33,7 +53,7 @@ def fetch_scores_from_file(path="/scoreboard.json", return_meta=False):
     _validate_team(right)
 
     if return_meta and isinstance(data, dict):
-        meta = {k: data[k] for k in ("status", "league", "season", "week", "timestamp", "sleep") if k in data}
+        meta = _extract_meta(data)
         return left, right, meta
 
     return left, right
@@ -53,19 +73,21 @@ _session = None  # cached adafruit_requests Session
 
 def _get_session():
     """
-    Lazily create and cache a requests.Session using the CircuitPython network stack.
-    Assumes wifi.radio is already connected (handle connect in code.py).
+    Lazily return a requests.Session.
+    If code.py has already injected _session (e.g., Network.requests), we use that.
+    Otherwise, create one from wifi.radio (CircuitPython only).
     """
     global _session
-    if _session is None:
-        pool = socketpool.SocketPool(wifi.radio)
-        _session = requests.Session(pool, ssl.create_default_context())
+    if _session is not None:
+        return _session
+    pool = socketpool.SocketPool(wifi.radio)
+    _session = requests.Session(pool, ssl.create_default_context())
     return _session
 
 def fetch_scores_from_http(url, return_meta=False, timeout=5):
     """
     Fetch scoreboard JSON from an HTTP(S) endpoint (MatrixPortal over Wi-Fi).
-    - url: e.g., "http://k5lab.local:8000/scoreboard.json"
+    - url: e.g., "http://<pi-ip>:8000/scoreboard.json"
     - return_meta: include top-level metadata if present
     - timeout: seconds for the HTTP request
     """
@@ -75,11 +97,14 @@ def fetch_scores_from_http(url, return_meta=False, timeout=5):
     sess = _get_session()
     resp = sess.get(url, timeout=timeout)
     try:
-        # adafruit_requests doesn't raise for HTTP errors by default,
-        # but we'll be defensive and accept any 2xx/3xx content that parses.
         data = resp.json()
     finally:
         resp.close()
+
+    # Quiet-hours / sleep payload
+    is_sleep, ret = _handle_sleep_if_present(data, return_meta)
+    if is_sleep:
+        return ret
 
     # Normalize "teams" to a list of exactly two dicts
     if isinstance(data, dict):
@@ -97,7 +122,7 @@ def fetch_scores_from_http(url, return_meta=False, timeout=5):
     _validate_team(right)
 
     if return_meta and isinstance(data, dict):
-        meta = {k: data[k] for k in ("status", "league", "season", "week", "timestamp", "sleep") if k in data}
+        meta = _extract_meta(data)
         return left, right, meta
 
     return left, right
