@@ -11,21 +11,37 @@ TMP="$OUTDIR/.scoreboard.json.$$"
 OUT="$OUTDIR/scoreboard.json"
 LOG="$PROJECT_DIR/pi/scoreboard.log"
 
+# Quiet hours: 00:00–07:59 local time -> write sleep JSON and exit
+is_quiet_hours() {
+  # 0..23 hour
+  local h
+  h="$(date +%H)"
+  # 00 <= hour < 08
+  [[ "$h" -ge 0 && "$h" -lt 8 ]]
+}
+
+# Gametime windows (Thu 19:00–23:59, Sun 12:00–23:59, Mon 19:00–23:59)
 is_gametime() {
-  # %u: 1=Mon ... 7=Sun ; %H%M: 0000..2359 (24h)
   local dow timehm
-  dow="$(date +%u)"
+  dow="$(date +%u)"     # 1=Mon ... 7=Sun
   timehm="$(date +%H%M)"
 
-  # Thu 19:00–23:59
-  if [[ "$dow" -eq 4 && "$timehm" -ge 1900 ]]; then return 0; fi
-  # Sun 12:00–23:59
-  if [[ "$dow" -eq 7 && "$timehm" -ge 1200 ]]; then return 0; fi
-  # Mon 19:00–23:59
-  if [[ "$dow" -eq 1 && "$timehm" -ge 1900 ]]; then return 0; fi
-
+  [[ "$dow" -eq 4 && "$timehm" -ge 1900 ]] && return 0  # Thu
+  [[ "$dow" -eq 7 && "$timehm" -ge 1200 ]] && return 0  # Sun
+  [[ "$dow" -eq 1 && "$timehm" -ge 1900 ]] && return 0  # Mon
   return 1
 }
+
+# Quiet-hours short-circuit
+if is_quiet_hours; then
+  {
+    echo "[$(date -Iseconds)] quiet-hours: writing sleep JSON"
+    printf '%s\n' '{"status":"sleep"}' > "$TMP"
+    mv -f "$TMP" "$OUT"
+    echo "[$(date -Iseconds)] wrote $OUT (sleep)"
+  } >> "$LOG" 2>&1
+  exit 0
+fi
 
 # How stale is the current OUT file?
 now="$(date +%s)"
