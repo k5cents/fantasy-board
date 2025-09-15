@@ -1,64 +1,79 @@
-> [!NOTE]  
-> Forked from [metro-sign](https://github.com/erikrrodriguez/dc-metro), which was forked from [metro-sign](https://github.com/metro-sign/dc-metro). In the process of making the sign display ESPN fantasy football data instead of WMATA data.
-
 # Fantasy Football Scoreboard
-This project contains the source code to create your own ESPN fantasy football scoreboard. It was written using CircuitPython targeting the [Adafruit Matrix Portal](https://www.adafruit.com/product/4745) and is optimized for 64x32 RGB LED matrices.
 
-# How To
-## Hardware
-- An [Adafruit Matrix Portal Start Kit](https://www.adafruit.com/product/4812) - $69.95
-    - An [Adafruit Matrix Portal](https://www.adafruit.com/product/4745)
-    - A **64x32 RGB LED matrix** compatible with the _Matrix Portal_
-    - A **USB-C power supply**
+A homelab-style project that displays live fantasy football scores on an Adafruit MatrixPortal M4 + RGB LED matrix.  
+The Raspberry Pi 5 scrapes and serves JSON over Wi-Fi, and the MatrixPortal polls it to render a clean, color-coded scoreboard.
+The Raspberry Pi is required because the ESPN API returns too much data to be loaded into the memory of the MatrixPortal M4 board.
 
-## Part 1: Prepare the Board
+---
 
-1. Lightly screw in the phillips head screws into the posts on the _Matrix Portal_. These only need to go down about 60% of the way.
-2. Using the power cable provided with 64x32 matrix, slide the prong for the **red power cable** between the post and the screw on the port labeled **5v**. Tighten down this screw all the way using your screwdriver. Repeat the same for the **black power cable** and the **GND** port.
-3. Connect the _Matrix Portal_ to the large connector on the left-hand side of the back of the 64x32 matrix.
-4. Plug one of the power connectors into the right-hand side of the 64x32 matrix.
-5. You can use masking tape (or painter's tape) to prevent the cables from flopping around.
+## Project Structure
 
-## Part 2: Loading the Software
-1. Connect the board to your computer using a USB-C cable. Double click the button on the board labeled _RESET_. The board should mount onto your computer as a storage volume, most likely named _MATRIXBOOT_.
-2. Flash your _Matrix Portal_ with the latest release of CircuitPython 8.
-    - Download the [firmware from Adafruit](https://circuitpython.org/board/matrixportal_m4/).
-    - Drag the downloaded `.uf2` file into the root of the _MATRIXBOOT_ volume.
-    - The board will automatically flash the version of CircuitPython and remount as _CIRCUITPY_.
-    - If something goes wrong, refer to the [Adafruit Documentation](https://learn.adafruit.com/adafruit-matrixportal-m4/install-circuitpython).
-3. Decompress the `lib.zip` file for from this repository into the root of the _CIRCUITPY_ volume. There should be one folder named `lib/`, with a plethora of files underneath. You can delete `lib.zip` from the _CIRCUITPY_ volume, as it's no longer needed.
-    - It has been reported that this step may fail ([Issue #2](https://github.com/metro-sign/dc-metro/issues/2)), most likely due to the storage on the Matrix Portal not being able to handle the decompression. If this happens, unzip the `lib.zip` file on your computer, and copy the `lib/` folder to the Matrix Portal. Command line tools could also be used if the above doesn't work.
-4. Copy all of the Python files from `src/` in this repository into the root of the _CIRCUITPY_ volume.
-5. The board should now light up with a loading screen, but we've still got some work to do.
-
-## Part 3: Configuring the Board
-1. Open the `[config.py](src/config.py)` file located in the root of the _CIRCUITPY_ volume.
-2. Fill in your WiFi SSID and password under the **Network Configuration** section.
-3. Under the **League Configuration** section:
-    1. Set `leagueId` and `teamId` to your league and team.
-4. At the end, the first part of your configuration file should look similar this:
-
-```python
-#########################
-# Network Configuration #
-#########################
-
-# WIFI Network SSID
-'wifi_ssid': 'My Wireless Network',
-
-# WIFI Password
-'wifi_password': 'MyWirelessPassword',
-
-#########################
-# leagueId Configuration   #
-#########################
-'leagueId': '42654852'
-'teamId': '6'
-
-...
+```
+.
+├── pi/             # Raspberry Pi side (data fetch + serve)
+│   ├── query_scores.py   # Fetches and formats JSON from ESPN APIs
+│   ├── update_scores.sh  # Runs query, writes atomically to `www/scoreboard.json`
+│   ├── scoreboard.log    # Log of updates/errors
+│
+├── src/            # CircuitPython side (MatrixPortal M4)
+│   ├── code.py          # Main loop: Wi-Fi connect + fetch JSON + render
+│   ├── config.py        # Display + runtime config (http_url, refresh_interval, colors)
+│   ├── score_board.py   # Renderer: draws 2 teams, 4 rows
+│   ├── read_json.py     # Minimal JSON fetcher/validator (HTTP only)
+│   ├── secrets.py       # (deprecated; use settings.toml instead)
+│
+├── requirements.txt     # Python packages for the Pi side
+├── lib.zip              # CircuitPython library bundle (subset needed for MatrixPortal)
+└── README.md            # You are here
 ```
 
-5. After you save this file, your board should refresh and connect to ESPN.
+---
 
-> [!TIP]
-> If something goes wrong, take a peek at the [Adafruit Documentation](https://learn.adafruit.com/adafruit-matrixportal-m4). Additionally, you can connect to the board using a [serial connection](https://learn.adafruit.com/welcome-to-circuitpython/kattni-connecting-to-the-serial-console) to gain access to its logging.
+## How It Works
+
+- **Pi 5 (`pi/`)**  
+  - `query_scores.py` pulls matchup scores and projections, cleans them, and prints JSON.  
+  - `update_scores.sh` runs the query, writes to a temp file, then atomically replaces `www/scoreboard.json`.  
+  - Systemd timers run `update_scores.sh`:
+    - **Gametime:** every minute (Thu night, Sun afternoon/evening, Mon night).  
+    - **Off-hours:** on the half-hour, every 30 minutes.  
+  - A simple `http.server` or systemd-managed Python server serves `www/scoreboard.json` on port 8000.
+
+- **MatrixPortal M4 (`src/`)**  
+  - `code.py`:
+    - Connects to Wi-Fi via `Network` (uses `settings.toml` for SSID/PW).  
+    - Polls `http_url` every `refresh_interval` seconds.  
+    - Renders the two teams with `FantasyBoard`.  
+  - `score_board.py`:  
+    - 4 rows per team: team abbrev, live points, projected points (colored leader/trailer), projected rank (ordinal, green top-N / red bottom).  
+  - `read_json.py`:  
+    - Tiny HTTP fetcher + validator for expected JSON shape.  
+
+---
+
+## Setup
+
+### 1. Raspberry Pi (server)
+- Install dependencies:
+  ```bash
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install -r requirements.txt
+  ```
+- Enable and start systemd service/timers for `update_scores.sh` and the HTTP server.  
+- Verify JSON updates at:  
+  ```bash
+  curl http://<pi-ip>:8000/scoreboard.json | jq .
+  ```
+
+### 2. MatrixPortal (client)
+- Flash CircuitPython 9.x to the MatrixPortal M4.  
+- Copy `src/` contents to the CIRCUITPY root.  
+- Unzip `lib.zip` into CIRCUITPY `lib/` (must include `adafruit_matrixportal`, `adafruit_portalbase`, `adafruit_requests`, `adafruit_bitmap_font`, `adafruit_display_text`, plus their deps).  
+- Add `settings.toml` to CIRCUITPY root with Wi-Fi creds:
+  ```toml
+  CIRCUITPY_WIFI_SSID = "your-ssid"
+  CIRCUITPY_WIFI_PASSWORD = "your-password"
+  CIRCUITPY_TIMEZONE = "America/New_York"
+  ```
+- Press reset; the board should connect to Wi-Fi and begin displaying the matchup.

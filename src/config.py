@@ -1,13 +1,9 @@
 # config.py — Fantasy Scoreboard (local file mode, exactly two teams)
 
 config = {
-    # Wi-Fi
-    'wifi_ssid': 'k24wifi',
-    'wifi_password': '',
-
     # Data source
     'mode': 'FANTASY_HTTP',
-    "http_url": "http://k5lab.local:8000/scoreboard.json",
+    "http_url": "http://192.168.0.109:8000/scoreboard.json",
     'local_json_path': '/scoreboard.json',
     'refresh_interval': 30,   # seconds; adjust as you like
 

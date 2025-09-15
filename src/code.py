@@ -1,39 +1,52 @@
-# code.py
+# code.py — always fetch over Wi-Fi using MatrixPortal Network helper
+
 import time
 import supervisor
+import os
+
 from config import config as cfg
 from score_board import FantasyBoard
-from read_json import fetch_scores_from_file, fetch_scores_from_http
-from secrets import secrets
 
-# --- Disable autoreload so JSON updates don't reset the board ---
-try:
-    supervisor.disable_autoreload()
-except AttributeError:
-    supervisor.runtime.autoreload = False
+# Use the HTTP fetcher + module-level session hook
+import read_json as rj
+from read_json import fetch_scores_from_http
 
-# --- Optional Wi-Fi setup (only if using HTTP mode) ---
+# Disable autoreload so background file writes don't reboot the board
+# try:
+#     supervisor.disable_autoreload()
+# except AttributeError:
+#    supervisor.runtime.autoreload = False
+
+# High-level Wi-Fi helper for MatrixPortal (ESP32 AirLift)
+from adafruit_matrixportal.network import Network
+import adafruit_requests as requests
+
+
 def _wifi_connect():
-    import wifi
-    import ipaddress
+    """
+    Bring up Wi-Fi via MatrixPortal's Network helper.
+    Uses credentials from settings.toml (preferred) or secrets.py (deprecated).
+    Exposes a ready-to-use adafruit_requests.Session at net.requests.
+    """
+    net = Network(status_neopixel=None)  # silence status LED
+    print("Connecting to Wi-Fi...")
+    net.connect()
+    print("Connected; IP:", net.ip_address)
 
-    ssid = secrets.get("ssid")
-    password = secrets.get("password")
-    if not ssid or not password:
-        raise RuntimeError("Missing Wi-Fi credentials in secrets.py")
+    # Hand both the symbol and the session to read_json so its guard passes
+    rj.requests = requests          # satisfy "if requests is None" check
+    rj._session = net.requests      # reuse one Session for all GETs
+    return net
 
-    print("Connecting to", ssid, "...")
-    wifi.radio.connect(ssid, password)
-    print("Connected, IP address:", wifi.radio.ipv4_address)
 
 def main():
-    mode = cfg.get("mode", "FANTASY_LOCAL")
-    path = cfg.get("local_json_path", "/scoreboard.json")
     url = cfg.get("http_url")
-    interval = cfg.get("refresh_interval", 60)
+    if not url:
+        raise RuntimeError("Missing 'http_url' in config")
 
-    if mode == "FANTASY_HTTP":
-        _wifi_connect()
+    interval = cfg.get("refresh_interval", 5)
+
+    _wifi_connect()
 
     board = FantasyBoard(cfg)
     board.banner(cfg.get("banner_left"), cfg.get("banner_right"))
@@ -42,21 +55,16 @@ def main():
 
     while True:
         try:
-            if mode == "FANTASY_HTTP":
-                left, right = fetch_scores_from_http(url)
-            else:
-                left, right = fetch_scores_from_file(path)
-
+            left, right = fetch_scores_from_http(url)
             cache_pair = (left, right)
             board.render_pair(left, right)
-
         except Exception as e:
-            print("Error fetching scores:", e)
-            # Keep displaying the last good frame if available
+            # Keep last good frame if the network burps; log the error
+            print("Fetch/render error:", e)
             if cache_pair:
                 board.render_pair(cache_pair[0], cache_pair[1])
-
         time.sleep(interval)
+
 
 if __name__ == "__main__":
     main()
