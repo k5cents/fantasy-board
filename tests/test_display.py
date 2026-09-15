@@ -136,13 +136,18 @@ def team(abbrev, live, proj, rank, prob):
 
 class TestLayout(unittest.TestCase):
     def test_rows_and_bar_fit_the_panel(self):
-        """Four 7px rows plus the bar must land inside 32px with no overlap."""
+        """
+        Four 7px rows plus the bar must land inside 32px with no overlap.
+
+        A label's text is NOT centered on its y: measured on the board,
+        bounding_box is (0, -4, w, 7), so the glyphs run y-4 .. y+2.
+        """
         height = cfg['matrix_height']
         top = cfg['top_margin']
         spans = []
         for baseline in cfg['row_baselines']:
-            center = baseline + top
-            spans.append((center - 3, center + 3))  # 7px glyph around its center
+            label_y = baseline + top
+            spans.append((label_y - 4, label_y + 2))
         self.assertGreaterEqual(spans[0][0], 0, "top row clips")
         bar_y = cfg['wp_bar_y']
         self.assertLess(spans[-1][1], bar_y, "bottom row collides with the bar")

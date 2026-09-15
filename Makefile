@@ -14,6 +14,14 @@ test: ## Run the server unit tests
 serve: ## Run the server locally on :8000
 	python3 server/app.py
 
+preview: ## Render every display state to preview.png (no board needed)
+	python3 tools/preview.py --out preview.png
+	-open preview.png
+
+preview-live: ## Render what the board is showing right now
+	python3 tools/preview.py --url http://$(HOST).lan:8000/scoreboard.json --scale 16 --out preview.png
+	-open preview.png
+
 board: ## Copy board/ to CIRCUITPY (keeps the board's own settings.toml)
 	@test -d $(CIRCUITPY) || { echo "$(CIRCUITPY) not mounted"; exit 1; }
 	COPYFILE_DISABLE=1 rsync -rt \

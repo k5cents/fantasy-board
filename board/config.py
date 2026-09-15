@@ -13,9 +13,12 @@ config = {
     'brightness': 0.2,        # 0.0-1.0
     'rotation': 180,
 
-    # Layout for the 5x7 font on 64x32 (4 rows of 7px + a 1px bar at the bottom)
+    # Layout for the 5x7 font on 64x32 (4 rows of 7px + a 1px bar at the bottom).
+    # A label's text spans y-4 to y+2 (measured: bounding_box is (0, -4, w, 7)),
+    # so these baselines put the rows at 0-6, 8-14, 16-22 and 24-30, leaving
+    # y=31 for the bar. Lowering top_margin clips the top row.
     'left_col_x': 1,
-    'top_margin': 2,                  # rows fill y=0..30, leaving y=31 for the bar
+    'top_margin': 3,
     'row_baselines': [1, 9, 17, 25],  # 4 rows, top to bottom
 
     # Win probability bar: mirrored halves filling outward from the center
