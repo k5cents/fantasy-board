@@ -128,9 +128,30 @@ Runs as the `fantasy-board` container with `restart: unless-stopped`, LAN-only o
 ## Development
 
 ```bash
-make test     # unit tests: transform, schedule windows, cache and stale behavior
-make serve    # run the server locally on :8000
+make test          # unit tests: transform, windows, cache, layout, preview
+make serve         # run the server locally on :8000
+make preview       # render every display state to preview.png
+make preview-live  # render what the board is showing right now
 ```
+
+### Previewing without the board
+
+`tools/preview.py` drives the real `board/display.py` through a stubbed
+CircuitPython display stack and rasterizes the same `5x7.bdf`, so the PNG is what
+`FantasyBoard` actually draws. Panel geometry follows the hardware (Adafruit 2278:
+64x32 on a 4mm pitch, 255 x 127 mm), and it simulates the acrylic diffuser by
+default; `--bare` renders the naked panel. `--compare` puts candidate layouts side
+by side, `--scenario` picks one state, `--url` renders a live payload.
+
+**Row geometry, measured on the board** (by reading a label's own bitmap over the
+REPL, since `bounding_box` describes the box and not the lit rows): `bitmap_label`
+renders into an 8-row bitmap at tilegrid `y-4` with glyph content in rows 1-6, so
+**lit pixels run `y-3` to `y+2`** and a descender would reach `y+3`. With
+`top_margin: 2` the four rows light 0-5, 8-13, 16-21 and 24-29, leaving row 30 dark
+above the bar at 31. Tests pin the preview to those measured rows.
+
+Note that one dark row reads as intra-character spacing rather than separation, so
+a wider gap or a taller bar costs a whole text row.
 
 `tests/fixtures/espn_week.json` is a trimmed real ESPN response, so the transform can be
 tested without a live game.
