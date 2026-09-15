@@ -13,10 +13,14 @@ config = {
     'brightness': 0.2,        # 0.0-1.0
     'rotation': 180,
 
-    # Layout for the 5x7 font on 64x32 (4 rows)
+    # Layout for the 5x7 font on 64x32 (4 rows of 7px + a 1px bar at the bottom)
     'left_col_x': 1,
-    'top_margin': 3,                  # push everything down to avoid top clipping
+    'top_margin': 2,                  # rows fill y=0..30, leaving y=31 for the bar
     'row_baselines': [1, 9, 17, 25],  # 4 rows, top to bottom
+
+    # Win probability bar: mirrored halves filling outward from the center
+    'wp_bar_y': 31,
+    'wp_bar_height': 1,
 
     # Colors
     'text_color': 0xFFFFFF,       # bright rows (team + live)

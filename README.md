@@ -64,8 +64,8 @@ Payload:
   "timestamp": "2026-09-15T18:00:00-04:00",
   "scoreboard": [
     {"team_id": 6, "team_abbrev": "KIER", "live_points": 44.7, "live_diff": -50.2,
-     "proj_points": 81.5, "proj_diff": -19.1, "bonus_win": 0, "bonus_diff": -17.6,
-     "score_rank": 9, "match_win": 0, "current_wins": 1},
+     "proj_points": 81.5, "proj_diff": -19.1, "win_prob": 54, "bonus_win": 0,
+     "bonus_diff": -17.6, "score_rank": 9, "match_win": 0, "current_wins": 1},
     {"team_id": 12, "...": "opponent"}
   ]
 }
@@ -74,6 +74,12 @@ Payload:
 Your team is always first. `score_rank` is the dense rank of projected points across
 the league; `bonus_win` marks the top five projected scores.
 
+**`win_prob` is the FantasyCast number**, as a whole percent. It lives in ESPN's
+`view=mMatchupScore` — the `mScoreboard` view returns the same matchup objects with
+`winProbability` absent, which is why it looks like the API doesn't expose it. The
+matchup view is also 80 KB smaller and carries `matchupPeriodId`, so the current week is
+selected explicitly rather than inferred.
+
 ### Board (`board/code.py`)
 
 - Brings up the display **first**, so `BOOT`, `WIFI`, `NO WIFI`, `NO URL` and `NO DATA`
@@ -81,6 +87,13 @@ the league; `bonus_win` marks the top five projected scores.
 - Polls `SCOREBOARD_URL` every 30 seconds and renders two columns, 4 rows each:
   team abbreviation, live points, projected points (green leader / red trailer / yellow
   tie), and projected rank (green in the top 5, red below).
+- **Row 2 shows the win percentage until someone scores.** Both teams sit on `0.0` from
+  Tuesday to Thursday, so the row carries the odds instead, and switches to live points
+  at the first snap.
+- **The bottom pixel row is a win probability bar**, mirroring FantasyCast: each half is
+  a 32 px gauge filling outward from the center, so the lit block slides toward whoever
+  is favored. Favored side green, underdog red, dead heat yellow. It hides itself if
+  ESPN omits the probability.
 - `{"status": "sleep"}` blanks the panel and slows polling to 5 minutes.
 - A dim dot in the corner means the data has stopped updating (server marked it stale,
   or nothing fresh for 5 minutes). The last good frame stays on screen.

@@ -43,9 +43,12 @@ QUIET_START, QUIET_END = 0, 8
 # Bonus win goes to the top half of a 10 team league
 BONUS_PLACES = 5
 
+# mMatchupScore carries winProbability (the number FantasyCast shows) and
+# matchupPeriodId; mScoreboard has neither and is 80KB larger. mTeam supplies
+# abbreviations and records.
 BASE_URL = (
     "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/"
-    "seasons/{season}/segments/0/leagues/{league}?view=mScoreboard"
+    "seasons/{season}/segments/0/leagues/{league}?view=mMatchupScore&view=mTeam"
 )
 USER_AGENT = "https://github.com/k5cents/fflr/"
 TIMEOUT = 10
@@ -127,15 +130,20 @@ def transform(dat: Dict[str, Any], team_id: int) -> List[Dict[str, Any]]:
     """
     Reduce a league payload to the two teams of `team_id`'s current matchup.
 
-    ESPN only carries totalProjectedPointsLive on games in the current matchup
-    period, so that field doubles as the week filter.
+    Games are selected by matchupPeriodId; only that week's games carry live
+    totals, so a side without them is skipped as a guard.
     """
+    period = (dat.get("status") or {}).get("currentMatchupPeriod")
+
     rows: List[Dict[str, Any]] = []
     for game in dat.get("schedule", []):
+        if period is not None and game.get("matchupPeriodId") != period:
+            continue
         for side in ("home", "away"):
             team = game.get(side) or {}
             if "totalProjectedPointsLive" not in team:
                 continue
+            win_prob = team.get("winProbability")
             rows.append(
                 {
                     "matchup_id": game.get("id"),
@@ -143,6 +151,8 @@ def transform(dat: Dict[str, Any], team_id: int) -> List[Dict[str, Any]]:
                     # float() keeps a 0 score as 0.0, so the panel shows "0.0"
                     "live_points": round(float(team.get("totalPointsLive") or 0.0), 1),
                     "proj_points": round(float(team.get("totalProjectedPointsLive") or 0.0), 1),
+                    # whole percent: the board prints it and sizes the bar with it
+                    "win_prob": None if win_prob is None else round(float(win_prob) * 100),
                 }
             )
 
@@ -190,6 +200,7 @@ def transform(dat: Dict[str, Any], team_id: int) -> List[Dict[str, Any]]:
                 "live_diff": round(r["live_points"] - opp["live_points"], 1),
                 "proj_points": r["proj_points"],
                 "proj_diff": round(r["proj_points"] - opp["proj_points"], 1),
+                "win_prob": r["win_prob"],
                 "bonus_win": r["bonus_win"],
                 "bonus_diff": r["bonus_diff"],
                 "score_rank": r["score_rank"],

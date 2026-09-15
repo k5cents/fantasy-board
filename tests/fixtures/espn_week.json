@@ -9,6 +9,7 @@
  "schedule": [
   {
    "id": 1,
+   "matchupPeriodId": 1,
    "winner": "HOME",
    "home": {
     "teamId": 6,
@@ -21,6 +22,7 @@
   },
   {
    "id": 2,
+   "matchupPeriodId": 1,
    "winner": "AWAY",
    "home": {
     "teamId": 10,
@@ -33,86 +35,102 @@
   },
   {
    "id": 6,
+   "matchupPeriodId": 2,
    "winner": "UNDECIDED",
    "home": {
     "teamId": 12,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 96.82364389
+    "totalProjectedPointsLive": 96.82364389,
+    "winProbability": 0.5
    },
    "away": {
     "teamId": 11,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 96.93422788
+    "totalProjectedPointsLive": 96.93422788,
+    "winProbability": 0.5
    }
   },
   {
    "id": 7,
+   "matchupPeriodId": 2,
    "winner": "UNDECIDED",
    "home": {
     "teamId": 4,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 95.9366627
+    "totalProjectedPointsLive": 95.9366627,
+    "winProbability": 0.46
    },
    "away": {
     "teamId": 6,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 102.31814821
+    "totalProjectedPointsLive": 102.31814821,
+    "winProbability": 0.54
    }
   },
   {
    "id": 8,
+   "matchupPeriodId": 2,
    "winner": "UNDECIDED",
    "home": {
     "teamId": 3,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 101.99135868
+    "totalProjectedPointsLive": 101.99135868,
+    "winProbability": 0.57
    },
    "away": {
     "teamId": 10,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 90.32159391
+    "totalProjectedPointsLive": 90.32159391,
+    "winProbability": 0.43
    }
   },
   {
    "id": 9,
+   "matchupPeriodId": 2,
    "winner": "UNDECIDED",
    "home": {
     "teamId": 8,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 98.12468301
+    "totalProjectedPointsLive": 98.12468301,
+    "winProbability": 0.49
    },
    "away": {
     "teamId": 1,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 98.97846
+    "totalProjectedPointsLive": 98.97846,
+    "winProbability": 0.51
    }
   },
   {
    "id": 10,
+   "matchupPeriodId": 2,
    "winner": "UNDECIDED",
    "home": {
     "teamId": 13,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 93.46468479
+    "totalProjectedPointsLive": 93.46468479,
+    "winProbability": 0.45
    },
    "away": {
     "teamId": 5,
     "totalPoints": 0.0,
     "totalPointsLive": 0.0,
-    "totalProjectedPointsLive": 101.91556781
+    "totalProjectedPointsLive": 101.91556781,
+    "winProbability": 0.55
    }
   },
   {
    "id": 3,
+   "matchupPeriodId": 1,
    "winner": "HOME",
    "home": {
     "teamId": 1,
@@ -125,6 +143,7 @@
   },
   {
    "id": 4,
+   "matchupPeriodId": 1,
    "winner": "HOME",
    "home": {
     "teamId": 5,

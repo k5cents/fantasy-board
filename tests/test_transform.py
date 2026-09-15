@@ -38,11 +38,26 @@ class TestTransform(unittest.TestCase):
     def test_output_keys(self):
         expected = {
             "team_id", "team_abbrev", "live_points", "live_diff", "proj_points",
-            "proj_diff", "bonus_win", "bonus_diff", "score_rank", "match_win",
-            "current_wins",
+            "proj_diff", "win_prob", "bonus_win", "bonus_diff", "score_rank",
+            "match_win", "current_wins",
         }
         for row in self.rows:
             self.assertEqual(set(row), expected)
+
+    def test_win_prob_is_whole_percent(self):
+        """ESPN gives 0.54; the board wants 54 so it can print and draw it."""
+        us, them = self.rows
+        self.assertEqual(us["win_prob"], 54)
+        self.assertEqual(them["win_prob"], 46)
+        self.assertEqual(us["win_prob"] + them["win_prob"], 100)
+
+    def test_win_prob_absent_upstream_is_none(self):
+        dat = copy.deepcopy(self.dat)
+        for game in dat["schedule"]:
+            for side in ("home", "away"):
+                game[side].pop("winProbability", None)
+        for row in app.transform(dat, US):
+            self.assertIsNone(row["win_prob"])
 
     def test_points_stay_floats_at_zero(self):
         """A 0.0 score must render as "0.0", not "0", before kickoff."""
@@ -119,13 +134,27 @@ class TestTransform(unittest.TestCase):
                 winners += rows[0]["bonus_win"]
         self.assertEqual(winners, app.BONUS_PLACES)
 
-    def test_games_without_live_projections_are_ignored(self):
-        """Past and future weeks are in the schedule but carry no live projections."""
-        self.assertTrue(
-            any("totalProjectedPointsLive" not in g["home"] for g in self.dat["schedule"])
-        )
+    def test_other_weeks_are_ignored(self):
+        """The schedule holds every week; only the current matchup period counts."""
+        periods = {g["matchupPeriodId"] for g in self.dat["schedule"]}
+        self.assertGreater(len(periods), 1)
         ids = {r["team_id"] for r in self.rows}
         self.assertEqual(ids, {US, THEM})
+
+    def test_rank_ignores_other_weeks(self):
+        """A future week's game must not enter the league-wide projection ranking."""
+        dat = copy.deepcopy(self.dat)
+        period = dat["status"]["currentMatchupPeriod"]
+        ringer = None
+        for game in dat["schedule"]:
+            if game["matchupPeriodId"] != period:
+                game["home"]["totalProjectedPointsLive"] = 400.0
+                game["home"]["totalPointsLive"] = 0.0
+                ringer = game["home"]["teamId"]
+                break
+        self.assertIsNotNone(ringer)
+        rows = app.transform(dat, US)
+        self.assertEqual([r["score_rank"] for r in rows], [r["score_rank"] for r in self.rows])
 
     def test_unknown_team_returns_nothing(self):
         self.assertEqual(app.transform(self.dat, 999), [])
