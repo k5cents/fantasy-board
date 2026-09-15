@@ -49,23 +49,33 @@ class FantasyBoard:
         bright = self.cfg['text_color']
         dim = self.cfg['dim_text_color']
 
+        # With names off, the three remaining rows move up and the freed 8px
+        # goes to a taller bar and real breathing room above it
+        self.show_names = self.cfg.get('show_team_names', True)
+        if self.show_names:
+            team_y, live_y, proj_y, rank_y = rows[0], rows[1], rows[2], rows[3]
+        else:
+            team_y, live_y, proj_y, rank_y = rows[0], rows[0], rows[1], rows[2]
+
         # Left column (left-aligned)
-        self.lab_team_l = mk("", left_x, rows[0], bright)
-        self.lab_live_l = mk("", left_x, rows[1], bright)
-        self.lab_proj_l = mk("", left_x, rows[2], dim)
-        self.lab_rank_l = mk("", left_x, rows[3], dim)
+        self.lab_team_l = mk("", left_x, team_y, bright)
+        self.lab_live_l = mk("", left_x, live_y, bright)
+        self.lab_proj_l = mk("", left_x, proj_y, dim)
+        self.lab_rank_l = mk("", left_x, rank_y, dim)
 
         # Right column (right-aligned to the panel edge on render)
-        self.lab_team_r = mk("", left_x, rows[0], bright)
-        self.lab_live_r = mk("", left_x, rows[1], bright)
-        self.lab_proj_r = mk("", left_x, rows[2], dim)
-        self.lab_rank_r = mk("", left_x, rows[3], dim)
+        self.lab_team_r = mk("", left_x, team_y, bright)
+        self.lab_live_r = mk("", left_x, live_y, bright)
+        self.lab_proj_r = mk("", left_x, proj_y, dim)
+        self.lab_rank_r = mk("", left_x, rank_y, dim)
 
         self.labels = (
             self.lab_team_l, self.lab_live_l, self.lab_proj_l, self.lab_rank_l,
             self.lab_team_r, self.lab_live_r, self.lab_proj_r, self.lab_rank_r,
         )
         for w in self.labels:
+            if w in (self.lab_team_l, self.lab_team_r) and not self.show_names:
+                continue
             self.group.append(w)
 
         # Win probability bar along the bottom edge, drawn in true panel

@@ -66,10 +66,39 @@ class TestPreview(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "out.png")
             preview.write_png(path, width, height, rows)
-            data = open(path, "rb").read()
+            with open(path, "rb") as fh:
+                data = fh.read()
         self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
         self.assertEqual(struct.unpack(">II", data[16:24]), (width, height))
         self.assertEqual((width, height), (64 * 6, 32 * 6))
+
+    def test_matches_rows_measured_on_the_board(self):
+        """
+        Ground truth, read off the board over the REPL with top_margin 3 by
+        inspecting each label's own bitmap (bitmap_label renders into an 8-row
+        bitmap at tilegrid y-4, lit rows 1..6):
+
+            KIER  -> 1-6     54%   -> 9-14
+            102.3 -> 17-22   1st   -> 25-30    bar -> 31
+
+        If the preview's baseline model drifts, this fails.
+        """
+        cfg = dict(self.cfg, top_margin=3)
+        _, render = preview.SCENARIOS["pregame"]
+        frame = preview.render_frame(render, self.font, cfg, self.FantasyBoard)
+        rows = sorted({y for (_, y) in frame.pixels})
+        expected = list(range(1, 7)) + list(range(9, 15)) + \
+            list(range(17, 23)) + list(range(25, 31)) + [31]
+        self.assertEqual(rows, expected)
+
+    def test_shipped_margin_frees_row_zero_and_a_gap(self):
+        """The shipped config should light row 0 and leave row 30 dark."""
+        _, render = preview.SCENARIOS["pregame"]
+        frame = preview.render_frame(render, self.font, self.cfg, self.FantasyBoard)
+        rows = sorted({y for (_, y) in frame.pixels})
+        expected = list(range(0, 6)) + list(range(8, 14)) + \
+            list(range(16, 22)) + list(range(24, 30)) + [31]
+        self.assertEqual(rows, expected)
 
     def test_font_matches_the_device_metrics(self):
         """Measured on the board: '102.3' reports width 25, height 7."""

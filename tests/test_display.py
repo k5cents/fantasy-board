@@ -137,23 +137,37 @@ def team(abbrev, live, proj, rank, prob):
 class TestLayout(unittest.TestCase):
     def test_rows_and_bar_fit_the_panel(self):
         """
-        Four 7px rows plus the bar must land inside 32px with no overlap.
+        The text rows plus the bar must land inside 32px with no overlap.
 
-        A label's text is NOT centered on its y: measured on the board,
-        bounding_box is (0, -4, w, 7), so the glyphs run y-4 .. y+2.
+        Lit pixels run y-3 .. y+2, measured by reading a label's own bitmap on
+        the board: the glyph's blank row sits at the top of the box, not the
+        bottom. A descender would reach y+3, which no row here uses.
         """
         height = cfg['matrix_height']
         top = cfg['top_margin']
-        spans = []
-        for baseline in cfg['row_baselines']:
-            label_y = baseline + top
-            spans.append((label_y - 4, label_y + 2))
+        spans = [(b + top - 3, b + top + 2) for b in cfg['row_baselines']]
+
         self.assertGreaterEqual(spans[0][0], 0, "top row clips")
         bar_y = cfg['wp_bar_y']
         self.assertLess(spans[-1][1], bar_y, "bottom row collides with the bar")
         self.assertLess(bar_y + cfg['wp_bar_height'] - 1, height, "bar falls off the panel")
         for (_, end), (start, _) in zip(spans, spans[1:]):
             self.assertLess(end, start, "rows overlap")
+
+    def test_layout_leaves_a_dark_row_above_the_bar(self):
+        """
+        A single dark row reads as intra-character spacing, not separation --
+        but with no dark row at all the bar fuses to the rank row, which is
+        what top_margin 3 did on the real panel.
+        """
+        top = cfg['top_margin']
+        last_lit = cfg['row_baselines'][-1] + top + 2
+        self.assertLess(last_lit, cfg['wp_bar_y'], "bar touches the text")
+        self.assertGreaterEqual(cfg['row_baselines'][0] + top - 3, 0, "row 0 clipped")
+
+    def test_top_row_is_not_wasted(self):
+        """Row 0 should carry pixels; margin 3 left it dark for no reason."""
+        self.assertEqual(cfg['row_baselines'][0] + cfg['top_margin'] - 3, 0)
 
 
 class TestWinProbBar(unittest.TestCase):

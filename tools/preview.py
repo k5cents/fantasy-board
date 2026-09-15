@@ -8,15 +8,17 @@ clipping and off-by-one alignment show up here exactly as they would on the
 panel.
 
 Geometry matches the physical hardware (Adafruit 2278): 64x32 LEDs on a 4mm
-pitch, 255 x 127 mm, with a ~2.1mm emitter in each 4mm cell. Each LED is drawn
-as a round dot filling ~53% of its cell, lit dots glowing slightly, unlit dots
-left as dark gray so the grid reads like the real panel.
+pitch, 255 x 127 mm, with a ~2.1mm emitter per cell. By default it simulates
+the acrylic diffuser over the panel -- emitters swollen until they nearly
+touch but still distinct -- since that is what the board actually looks like
+and it changes layout judgements. --bare draws the naked panel instead.
 
 Usage:
     python3 tools/preview.py                     # every scenario, one sheet
     python3 tools/preview.py --scenario live
+    python3 tools/preview.py --compare           # every candidate layout
     python3 tools/preview.py --url http://k5aux.lan:8000/scoreboard.json
-    python3 tools/preview.py --json payload.json --scale 16
+    python3 tools/preview.py --json payload.json --scale 16 --bare
 """
 
 import argparse
@@ -37,15 +39,29 @@ EMITTER_MM = 2.1
 DOT_RATIO = EMITTER_MM / PITCH_MM
 
 # Where adafruit_display_text puts the baseline relative to a label's y.
-# Measured on the board: bitmap_label.Label(font_5x7, text='8').bounding_box
-# is (0, -4, 5, 7), so the glyph box runs y-4 .. y+2 and the baseline is y+2.
-BASELINE_OFFSET = 2
+#
+# Measured by reading a live label's own bitmap over the REPL, not inferred
+# from bounding_box: bitmap_label renders into an 8-row bitmap whose tilegrid
+# sits at y-4, and the glyph content occupies bitmap rows 1..6. So the font's
+# blank row lands at the TOP of the box and file row 0 draws at y-3, putting
+# the baseline (file row 5 for this font) at y+2.
+BASELINE_OFFSET = 3
 
-# Panel appearance
+# Panel appearance, bare panel: distinct dots with a dark grid between them
 SUBSTRATE = (8, 8, 8)
 UNLIT = (18, 18, 18)
 GLOW_RATIO = 1.9    # glow radius as a multiple of the dot radius
 GLOW_ALPHA = 0.10
+
+# Panel appearance behind an acrylic diffuser: emitters soften and swell until
+# they nearly touch, but stay distinct dots -- the retro look, not a blur. Lit
+# pixels keep a solid core with a short gaussian falloff; unlit LEDs fade to a
+# faint grid on a milky surface.
+DIFFUSED_SUBSTRATE = (11, 11, 12)
+DIFFUSED_UNLIT = (20, 20, 21)
+CORE_RATIO = 0.34   # solid center as a fraction of the pitch
+SPREAD = 0.24       # gaussian sigma as a fraction of the pitch
+REACH = 2.4         # sigmas to splat before the blob is negligible
 
 
 # ---------------------- BDF font -------------------------------------------
@@ -111,9 +127,9 @@ class BDFFont:
         """
         Draw `text` the way adafruit_display_text places it.
 
-        A label's box is not centered on y: measured on the board itself, a 5x7
-        glyph reports bounding_box (0, -4, w, 7), so the box runs y-4 to y+2 and
-        the baseline sits at y + BASELINE_OFFSET.
+        Lit pixels run y-3 .. y+2 for this font: bitmap_label puts the glyph's
+        blank row at the top of the box, so the baseline lands at
+        y + BASELINE_OFFSET. Verified against rows read off the board.
         """
         baseline = y + BASELINE_OFFSET
         pen = x
@@ -286,12 +302,15 @@ def write_png(path, width, height, rows):
         handle.write(png)
 
 
-def render_leds(frames, scale, gap_cells=2):
+def render_leds(frames, scale, gap_cells=2, diffuser=False):
     """
     Draw one or more 64x32 frames as physical LED dots, stacked vertically.
 
     Returns (width, height, rows) with rows as flat RGB byte lists.
     """
+    if diffuser:
+        return render_diffused(frames, scale, gap_cells)
+
     width_cells = frames[0].width
     height_cells = sum(f.height for f in frames) + gap_cells * (len(frames) - 1)
     width, height = width_cells * scale, height_cells * scale
@@ -337,6 +356,83 @@ def render_leds(frames, scale, gap_cells=2):
     return width, height, rows
 
 
+def render_diffused(frames, scale, gap_cells):
+    """
+    Simulate the acrylic diffuser: each lit LED becomes a soft gaussian blob
+    that bleeds into its neighbors, and unlit LEDs disappear entirely.
+
+    Blobs add together, so two lit pixels a row apart merge into one bar. That
+    is the behavior that makes a 1px dark row invisible on the real panel.
+    """
+    width_cells = frames[0].width
+    height_cells = sum(f.height for f in frames) + gap_cells * (len(frames) - 1)
+    width, height = width_cells * scale, height_cells * scale
+
+    accum = [[0.0, 0.0, 0.0] for _ in range(width * height)]
+
+    sigma = SPREAD * scale
+    core = CORE_RATIO * scale
+    reach = int(REACH * sigma + core) + 1
+    two_sigma_sq = 2.0 * sigma * sigma
+
+    # Precompute the blob profile once; every LED uses the same kernel.
+    # Inside the core the emitter is at full brightness; outside it falls off,
+    # so dots swell until they almost touch without smearing into each other.
+    kernel = {}
+    for dy in range(-reach, reach + 1):
+        for dx in range(-reach, reach + 1):
+            dist = (dx * dx + dy * dy) ** 0.5
+            if dist <= core:
+                weight = 1.0
+            else:
+                edge = dist - core
+                weight = 2.718281828 ** (-(edge * edge) / two_sigma_sq)
+            if weight > 0.01:
+                kernel[(dx, dy)] = weight
+
+    # Faint unlit grid: the diffuser hides the LEDs but not the pitch
+    y_offset = 0
+    for frame in frames:
+        for cy in range(frame.height):
+            for cx in range(frame.width):
+                if frame.get(cx, cy) is not None:
+                    continue
+                center_x = int(cx * scale + scale / 2)
+                center_y = int((cy + y_offset) * scale + scale / 2)
+                for (dx, dy), weight in kernel.items():
+                    px, py = center_x + dx, center_y + dy
+                    if 0 <= px < width and 0 <= py < height:
+                        cell = accum[py * width + px]
+                        for i in range(3):
+                            cell[i] += (DIFFUSED_UNLIT[i] - DIFFUSED_SUBSTRATE[i]) * weight
+        y_offset += frame.height + gap_cells
+
+    y_offset = 0
+    for frame in frames:
+        for (cx, cy), color in frame.pixels.items():
+            center_x = int(cx * scale + scale / 2)
+            center_y = int((cy + y_offset) * scale + scale / 2)
+            for (dx, dy), weight in kernel.items():
+                px, py = center_x + dx, center_y + dy
+                if 0 <= px < width and 0 <= py < height:
+                    cell = accum[py * width + px]
+                    cell[0] += color[0] * weight
+                    cell[1] += color[1] * weight
+                    cell[2] += color[2] * weight
+        y_offset += frame.height + gap_cells
+
+    rows = []
+    for y in range(height):
+        flat = []
+        for x in range(width):
+            cell = accum[y * width + x]
+            for i in range(3):
+                value = DIFFUSED_SUBSTRATE[i] + cell[i]
+                flat.append(255 if value > 255 else int(value))
+        rows.append(flat)
+    return width, height, rows
+
+
 def blend(canvas, x, y, color, alpha):
     alpha = max(0.0, min(1.0, alpha))
     base = canvas[y][x]
@@ -374,6 +470,34 @@ SCENARIOS = {
 }
 
 SHEET_ORDER = ["pregame", "live", "tie", "blowout", "final", "stale", "nodata"]
+
+
+# Candidate layouts, as patches over board/config.py.
+#
+# Lit pixels run y-3 .. y+2, so a text row costs 6 lit rows and rows sit 8
+# apart to keep 2 dark rows between them (1 dark row reads as intra-character
+# spacing, not separation). Four rows therefore span 0..29 and leave exactly
+# one dark row above a 1px bar: a bigger gap, or a thicker bar, costs a row.
+LAYOUTS = {
+    # names, points, projection, rank + 1px bar, one dark row above it
+    "current": {},
+    # names dropped: 3 rows, 2px bar, 4 dark rows above it
+    "compact": {
+        "show_team_names": False,
+        "top_margin": 0,
+        "row_baselines": [5, 14, 23],
+        "wp_bar_y": 30,
+        "wp_bar_height": 2,
+    },
+    # names dropped: 3 rows, 4px bar as the headline element
+    "compact-thick": {
+        "show_team_names": False,
+        "top_margin": 0,
+        "row_baselines": [4, 13, 22],
+        "wp_bar_y": 28,
+        "wp_bar_height": 4,
+    },
+}
 
 
 def payload_scenario(payload):
@@ -425,6 +549,11 @@ def main():
     parser.add_argument("--json", help="render a payload from a file")
     parser.add_argument("--scale", type=int, default=12, help="pixels per LED (default 12)")
     parser.add_argument("--out", default=os.path.join(ROOT, "preview.png"))
+    parser.add_argument("--bare", action="store_true",
+                        help="render the naked panel; default simulates the acrylic diffuser")
+    parser.add_argument("--layout", choices=sorted(LAYOUTS), default="current")
+    parser.add_argument("--compare", action="store_true",
+                        help="render every layout for the chosen scenario")
     args = parser.parse_args()
 
     cfg, FantasyBoard, font = load_board()
@@ -437,16 +566,21 @@ def main():
         else:
             with open(args.json) as handle:
                 payload = json.load(handle)
-        renders = [(args.url or args.json, payload_scenario(payload))]
+        renders = [(args.url or args.json, payload_scenario(payload), args.layout)]
+    elif args.compare:
+        scenario = args.scenario or "pregame"
+        render = SCENARIOS[scenario][1]
+        renders = [(name + " (" + scenario + ")", render, name) for name in sorted(LAYOUTS)]
     elif args.scenario:
         caption, render = SCENARIOS[args.scenario]
-        renders = [(args.scenario + ": " + caption, render)]
+        renders = [(args.scenario + ": " + caption, render, args.layout)]
     else:
-        renders = [(name + ": " + SCENARIOS[name][0], SCENARIOS[name][1])
+        renders = [(name + ": " + SCENARIOS[name][0], SCENARIOS[name][1], args.layout)
                    for name in SHEET_ORDER]
 
-    frames = [render_frame(render, font, cfg, FantasyBoard) for _, render in renders]
-    width, height, rows = render_leds(frames, args.scale)
+    frames = [render_frame(render, font, dict(cfg, **LAYOUTS[layout]), FantasyBoard)
+              for _, render, layout in renders]
+    width, height, rows = render_leds(frames, args.scale, diffuser=not args.bare)
     write_png(args.out, width, height, rows)
 
     clipped = sum(f.clipped for f in frames)
@@ -457,7 +591,7 @@ def main():
     mm_h = cfg["matrix_height"] * PITCH_MM
     print("wrote %s  (%dx%d px, %d panel%s at %.0f x %.0f mm each)" % (
         args.out, width, height, len(frames), "" if len(frames) == 1 else "s", mm_w, mm_h))
-    for label, _ in renders:
+    for label, _, _layout in renders:
         print("  -", label)
     return 0
 
