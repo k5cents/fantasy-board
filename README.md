@@ -1,8 +1,10 @@
 # Fantasy Football Scoreboard
 
-A homelab-style project that displays live fantasy football scores on an Adafruit MatrixPortal M4 + RGB LED matrix.  
-The Raspberry Pi 5 scrapes and serves JSON over Wi-Fi, and the MatrixPortal polls it to render a clean, color-coded scoreboard.
-The Raspberry Pi is required because the ESPN API returns too much data to be loaded into the memory of the MatrixPortal M4 board.
+Live fantasy football scores on an Adafruit MatrixPortal M4 + 64x32 RGB LED matrix.
+
+A small server on the Pi (`k5aux`) fetches the current ESPN matchup and serves it as
+compact JSON; the board polls that endpoint and renders it. The server exists because
+ESPN's smallest useful response is ~200 KB, and the M4 has 192 KB of RAM.
 
 ---
 
@@ -10,70 +12,112 @@ The Raspberry Pi is required because the ESPN API returns too much data to be lo
 
 ```
 .
-├── pi/             # Raspberry Pi side (data fetch + serve)
-│   ├── query_scores.py   # Fetches and formats JSON from ESPN APIs
-│   ├── update_scores.sh  # Runs query, writes atomically to `www/scoreboard.json`
-│   ├── scoreboard.log    # Log of updates/errors
+├── server/              # runs on k5aux via Docker Compose
+│   ├── app.py           # HTTP server + cache + ESPN fetch + transform (stdlib only)
+│   ├── Dockerfile
+│   └── compose.yml
 │
-├── src/            # CircuitPython side (MatrixPortal M4)
-│   ├── code.py          # Main loop: Wi-Fi connect + fetch JSON + render
-│   ├── config.py        # Display + runtime config (http_url, refresh_interval, colors)
-│   ├── score_board.py   # Renderer: draws 2 teams, 4 rows
-│   ├── read_json.py     # Minimal JSON fetcher/validator (HTTP only)
-│   ├── secrets.py       # (deprecated; use settings.toml instead)
+├── board/               # copied to the CIRCUITPY drive
+│   ├── code.py          # boot, Wi-Fi, poll loop, watchdog
+│   ├── display.py       # FantasyBoard renderer + status screens
+│   ├── config.py        # display, colors, intervals
+│   ├── fonts/5x7.bdf
+│   ├── requirements.txt         # CircuitPython libs for circup
+│   └── settings.toml.example    # Wi-Fi creds + SCOREBOARD_URL
 │
-├── requirements.txt     # Python packages for the Pi side
-├── lib.zip              # CircuitPython library bundle (subset needed for MatrixPortal)
-└── README.md            # You are here
+├── tests/               # unit tests over a saved ESPN response
+└── Makefile
 ```
 
 ---
 
 ## How It Works
 
-- **Pi 5 (`pi/`)**  
-  - `query_scores.py` pulls matchup scores and projections, cleans them, and prints JSON.  
-  - `update_scores.sh` runs the query, writes to a temp file, then atomically replaces `www/scoreboard.json`.  
-  - Systemd timers run `update_scores.sh`:
-    - **Gametime:** every minute (Thu night, Sun afternoon/evening, Mon night).  
-    - **Off-hours:** on the half-hour, every 30 minutes.  
-  - A simple `http.server` or systemd-managed Python server serves `www/scoreboard.json` on port 8000.
+### Server (`server/app.py`)
 
-- **MatrixPortal M4 (`src/`)**  
-  - `code.py`:
-    - Connects to Wi-Fi via `Network` (uses `settings.toml` for SSID/PW).  
-    - Polls `http_url` every `refresh_interval` seconds.  
-    - Renders the two teams with `FantasyBoard`.  
-  - `score_board.py`:  
-    - 4 rows per team: team abbrev, live points, projected points (colored leader/trailer), projected rank (ordinal, green top-N / red bottom).  
-  - `read_json.py`:  
-    - Tiny HTTP fetcher + validator for expected JSON shape.  
+- `GET /scoreboard.json` returns the payload below; `GET /healthz` returns `ok`.
+- ESPN is queried lazily, when a request arrives and the cache has aged out:
+  - **Gametime** (Thu/Mon 19:00+, Sun 12:00+ ET): 60 seconds.
+  - **Otherwise:** 30 minutes.
+- **Quiet hours** (00:00–07:59 ET): returns `{"status": "sleep"}` without calling ESPN.
+- If ESPN fails, the last good payload is served with `"stale": true`; with no cache at
+  all, `{"status": "error", "detail": ...}`.
+- The season is derived from the date (rolls over in March), so nothing needs editing
+  each year. League and team come from the environment.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `LEAGUE_ID` | `252353` | ESPN league |
+| `TEAM_ID` | `6` | the team whose matchup is displayed |
+| `SEASON` | *(derived)* | override the season year |
+| `PORT` | `8000` | listen port |
+| `TZ` | `America/New_York` | zone for quiet hours and gametime |
+
+Payload:
+
+```json
+{
+  "status": "ok",
+  "league": 252353,
+  "season": 2026,
+  "week": 2,
+  "timestamp": "2026-09-15T18:00:00-04:00",
+  "scoreboard": [
+    {"team_id": 6, "team_abbrev": "KIER", "live_points": 44.7, "live_diff": -50.2,
+     "proj_points": 81.5, "proj_diff": -19.1, "bonus_win": 0, "bonus_diff": -17.6,
+     "score_rank": 9, "match_win": 0, "current_wins": 1},
+    {"team_id": 12, "...": "opponent"}
+  ]
+}
+```
+
+Your team is always first. `score_rank` is the dense rank of projected points across
+the league; `bonus_win` marks the top five projected scores.
+
+### Board (`board/code.py`)
+
+- Brings up the display **first**, so `BOOT`, `WIFI`, `NO WIFI`, `NO URL` and `NO DATA`
+  are visible on the panel instead of a dark board.
+- Polls `SCOREBOARD_URL` every 30 seconds and renders two columns, 4 rows each:
+  team abbreviation, live points, projected points (green leader / red trailer / yellow
+  tie), and projected rank (green in the top 5, red below).
+- `{"status": "sleep"}` blanks the panel and slows polling to 5 minutes.
+- A dim dot in the corner means the data has stopped updating (server marked it stale,
+  or nothing fresh for 5 minutes). The last good frame stays on screen.
+- A hardware watchdog resets the board if the loop wedges; unexpected errors reload the
+  program rather than dropping to the REPL.
 
 ---
 
 ## Setup
 
-### 1. Raspberry Pi (server)
-- Install dependencies:
-  ```bash
-  python3 -m venv .venv
-  source .venv/bin/activate
-  pip install -r requirements.txt
-  ```
-- Enable and start systemd service/timers for `update_scores.sh` and the HTTP server.  
-- Verify JSON updates at:  
-  ```bash
-  curl http://<pi-ip>:8000/scoreboard.json | jq .
-  ```
+### Server (k5aux)
 
-### 2. MatrixPortal (client)
-- Flash CircuitPython 9.x to the MatrixPortal M4.  
-- Copy `src/` contents to the CIRCUITPY root.  
-- Unzip `lib.zip` into CIRCUITPY `lib/` (must include `adafruit_matrixportal`, `adafruit_portalbase`, `adafruit_requests`, `adafruit_bitmap_font`, `adafruit_display_text`, plus their deps).  
-- Add `settings.toml` to CIRCUITPY root with Wi-Fi creds:
-  ```toml
-  CIRCUITPY_WIFI_SSID = "your-ssid"
-  CIRCUITPY_WIFI_PASSWORD = "your-password"
-  CIRCUITPY_TIMEZONE = "America/New_York"
-  ```
-- Press reset; the board should connect to Wi-Fi and begin displaying the matchup.
+```bash
+make deploy
+curl http://k5aux.lan:8000/scoreboard.json | jq .
+```
+
+Runs as the `fantasy-board` container with `restart: unless-stopped`, LAN-only on 8000.
+`make logs` tails it.
+
+### Board
+
+1. Flash CircuitPython 9.x to the MatrixPortal M4.
+2. `make board-libs` — installs the libraries in `board/requirements.txt` with
+   [circup](https://github.com/adafruit/circup) (`uv tool install circup`).
+3. Copy `board/settings.toml.example` to `CIRCUITPY/settings.toml` and fill in the Wi-Fi
+   credentials (2.4 GHz only) and `SCOREBOARD_URL`.
+4. `make board` — copies the code, skipping macOS `._*` junk and `settings.toml`.
+
+---
+
+## Development
+
+```bash
+make test     # unit tests: transform, schedule windows, cache and stale behavior
+make serve    # run the server locally on :8000
+```
+
+`tests/fixtures/espn_week.json` is a trimmed real ESPN response, so the transform can be
+tested without a live game.

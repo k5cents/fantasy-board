@@ -1,0 +1,231 @@
+{
+ "id": 252353,
+ "status": {
+  "currentMatchupPeriod": 2,
+  "latestScoringPeriod": 2,
+  "finalScoringPeriod": 17,
+  "isActive": true
+ },
+ "schedule": [
+  {
+   "id": 1,
+   "winner": "HOME",
+   "home": {
+    "teamId": 6,
+    "totalPoints": 84.64
+   },
+   "away": {
+    "teamId": 12,
+    "totalPoints": 82.5
+   }
+  },
+  {
+   "id": 2,
+   "winner": "AWAY",
+   "home": {
+    "teamId": 10,
+    "totalPoints": 102.02
+   },
+   "away": {
+    "teamId": 11,
+    "totalPoints": 109.9
+   }
+  },
+  {
+   "id": 6,
+   "winner": "UNDECIDED",
+   "home": {
+    "teamId": 12,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 96.82364389
+   },
+   "away": {
+    "teamId": 11,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 96.93422788
+   }
+  },
+  {
+   "id": 7,
+   "winner": "UNDECIDED",
+   "home": {
+    "teamId": 4,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 95.9366627
+   },
+   "away": {
+    "teamId": 6,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 102.31814821
+   }
+  },
+  {
+   "id": 8,
+   "winner": "UNDECIDED",
+   "home": {
+    "teamId": 3,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 101.99135868
+   },
+   "away": {
+    "teamId": 10,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 90.32159391
+   }
+  },
+  {
+   "id": 9,
+   "winner": "UNDECIDED",
+   "home": {
+    "teamId": 8,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 98.12468301
+   },
+   "away": {
+    "teamId": 1,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 98.97846
+   }
+  },
+  {
+   "id": 10,
+   "winner": "UNDECIDED",
+   "home": {
+    "teamId": 13,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 93.46468479
+   },
+   "away": {
+    "teamId": 5,
+    "totalPoints": 0.0,
+    "totalPointsLive": 0.0,
+    "totalProjectedPointsLive": 101.91556781
+   }
+  },
+  {
+   "id": 3,
+   "winner": "HOME",
+   "home": {
+    "teamId": 1,
+    "totalPoints": 122.86
+   },
+   "away": {
+    "teamId": 4,
+    "totalPoints": 83.16
+   }
+  },
+  {
+   "id": 4,
+   "winner": "HOME",
+   "home": {
+    "teamId": 5,
+    "totalPoints": 94.26
+   },
+   "away": {
+    "teamId": 3,
+    "totalPoints": 82.42
+   }
+  }
+ ],
+ "teams": [
+  {
+   "id": 1,
+   "abbrev": "AGUS",
+   "record": {
+    "overall": {
+     "wins": 2
+    }
+   }
+  },
+  {
+   "id": 3,
+   "abbrev": "PEPE",
+   "record": {
+    "overall": {
+     "wins": 0
+    }
+   }
+  },
+  {
+   "id": 4,
+   "abbrev": "BILL",
+   "record": {
+    "overall": {
+     "wins": 0
+    }
+   }
+  },
+  {
+   "id": 5,
+   "abbrev": "CART",
+   "record": {
+    "overall": {
+     "wins": 2
+    }
+   }
+  },
+  {
+   "id": 6,
+   "abbrev": "KIER",
+   "record": {
+    "overall": {
+     "wins": 1
+    }
+   }
+  },
+  {
+   "id": 8,
+   "abbrev": "CORE",
+   "record": {
+    "overall": {
+     "wins": 2
+    }
+   }
+  },
+  {
+   "id": 10,
+   "abbrev": "NICK",
+   "record": {
+    "overall": {
+     "wins": 1
+    }
+   }
+  },
+  {
+   "id": 11,
+   "abbrev": "KYLE",
+   "record": {
+    "overall": {
+     "wins": 2
+    }
+   }
+  },
+  {
+   "id": 12,
+   "abbrev": "COMP",
+   "record": {
+    "overall": {
+     "wins": 0
+    }
+   }
+  },
+  {
+   "id": 13,
+   "abbrev": "ANUS",
+   "record": {
+    "overall": {
+     "wins": 0
+    }
+   }
+  }
+ ]
+}

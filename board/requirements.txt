@@ -1,0 +1,6 @@
+# CircuitPython libraries for the MatrixPortal M4: `make board-libs`
+# circup installs each module's own dependencies (portalbase, ticks, ...).
+adafruit_matrixportal
+adafruit_requests
+adafruit_bitmap_font
+adafruit_display_text

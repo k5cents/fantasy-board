@@ -1,0 +1,12 @@
+services:
+  fantasy-board:
+    build: .
+    container_name: fantasy-board
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      LEAGUE_ID: "252353"
+      TEAM_ID: "6"
+      PORT: "8000"
+      TZ: "America/New_York"

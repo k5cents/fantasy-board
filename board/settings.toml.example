@@ -1,0 +1,7 @@
+# Copy to CIRCUITPY/settings.toml and fill in. Never committed; `make board` skips it.
+CIRCUITPY_WIFI_SSID = "k24iot"
+CIRCUITPY_WIFI_PASSWORD = "..."
+CIRCUITPY_TIMEZONE = "America/New_York"
+
+# Scoreboard server (k5aux). Use the IP if the board cannot resolve .lan names.
+SCOREBOARD_URL = "http://k5aux.lan:8000/scoreboard.json"

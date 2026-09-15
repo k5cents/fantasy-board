@@ -1,9 +1,11 @@
 .DS_Store
 .vscode
+.venv/
 
-lib
-boot_out.txt
 __pycache__/
 *.pyc
-.Rproj.user
-.venv/
+
+# board/host artifacts
+settings.toml
+scoreboard.json
+*.log
