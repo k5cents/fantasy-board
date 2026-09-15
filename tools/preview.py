@@ -59,9 +59,11 @@ GLOW_ALPHA = 0.10
 # faint grid on a milky surface.
 DIFFUSED_SUBSTRATE = (11, 11, 12)
 DIFFUSED_UNLIT = (20, 20, 21)
-CORE_RATIO = 0.34   # solid center as a fraction of the pitch
-SPREAD = 0.24       # gaussian sigma as a fraction of the pitch
+CORE_RATIO = 0.28   # solid center as a fraction of the pitch
+SPREAD = 0.07       # gaussian sigma as a fraction of the pitch
 REACH = 2.4         # sigmas to splat before the blob is negligible
+# core + REACH*SPREAD = 0.45 pitch, so neighbouring dots stop just short of
+# touching: a thin dark seam survives instead of the emitters merging
 
 
 # ---------------------- BDF font -------------------------------------------
