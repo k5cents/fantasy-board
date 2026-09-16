@@ -17,6 +17,9 @@ tools/preview.py  renders the display to PNG without the board
 tests/          unittest, stdlib only
 ```
 
+Ideas, deferred work and open questions go in `TODO.md` (same `- [ ]` style as
+the homelab repo), not GitHub issues. Add to it rather than starting a new list.
+
 ## Commands
 
 ```bash
@@ -74,12 +77,6 @@ Layout rules that follow:
 
 - A text row costs **6 lit rows**; rows sit **8 apart** to keep 2 dark rows
   between them.
-- **One dark row reads as intra-character spacing, not separation.** A visible
-  gap needs 2+ dark rows.
-- Four text rows plus a 1px bar fill all 32 rows exactly. A bigger gap or a
-  taller bar costs a whole text row — `LAYOUTS` in `tools/preview.py` has
-  `compact` (3 rows, 2px bar) and `compact-thick` (3 rows, 4px bar) ready to
-  compare; `display.py` supports them via `show_team_names: False`.
 - `top_margin: 3` wastes row 0 and fuses the bar to the rank row. `2` is right.
 - Font `board/fonts/5x7.bdf`: 5px advance, glyphs 4 wide plus a blank column, so
   `"102.3"` is exactly 25px. Text is placed by `.x` (left) or right-aligned to
@@ -91,6 +88,12 @@ device. If that test fails, the model drifted — re-measure, don't adjust it.
 ## ESPN API
 
 League **252353**, team **6** (`KIER`). No API key; `lm-api-reads.fantasy.espn.com`.
+
+**League scoring:** 1 win for winning your matchup, plus **1 bonus win for the
+top 5 projected scores** that week. `BONUS_PLACES = 5` in `server/app.py` encodes
+the cutoff, and `bonus_diff` is each team's signed distance from it — in a
+10-team league that line is also the median. The rank row's green/red is the
+in/out-of-bonus signal, which is why rank matters more than it looks.
 
 | View | Size | Notes |
 |---|---|---|
